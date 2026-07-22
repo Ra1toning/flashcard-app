@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 
@@ -12,9 +10,23 @@ const deckInclude = {
 } satisfies Prisma.DeckInclude;
 
 type DeckWithCounts = Prisma.DeckGetPayload<{ include: typeof deckInclude }>;
+type RatingSummary = { average: number; count: number };
 
-function serialize(deck: DeckWithCounts) {
-  return {
+async function serializeDecks(decks: DeckWithCounts[]) {
+  const ids = decks.map((deck) => deck.id);
+  const ratingRows = ids.length
+    ? await prisma.rating.groupBy({
+        by: ["deckId"],
+        where: { deckId: { in: ids } },
+        _avg: { value: true },
+        _count: { value: true },
+      })
+    : [];
+  const ratingMap = new Map<string, RatingSummary>(
+    ratingRows.map((row) => [row.deckId, { average: row._avg.value ?? 0, count: row._count.value }])
+  );
+
+  return decks.map((deck) => ({
     id: deck.id,
     name: deck.name,
     emoji: deck.emoji,
@@ -24,16 +36,12 @@ function serialize(deck: DeckWithCounts) {
     users: deck._count.copies,
     isPublic: deck.isPublic,
     createdAt: deck.createdAt.toISOString(),
-  };
+    rating: ratingMap.get(deck.id) ?? { average: 0, count: 0 },
+  }));
 }
 
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Нэвтрэх шаардлагатай." }, { status: 401 });
-    }
-
     const { searchParams } = new URL(req.url);
     const requestedFilter = searchParams.get("filter") || "all";
     const filter = new Set(["all", "trending", "popular", "new"]).has(requestedFilter)
@@ -66,7 +74,7 @@ export async function GET(req: Request) {
         include: deckInclude,
       });
       rows.sort((a, b) => (orderById.get(a.id) ?? 0) - (orderById.get(b.id) ?? 0));
-      return NextResponse.json({ decks: rows.map(serialize) });
+      return NextResponse.json({ decks: await serializeDecks(rows) });
     }
 
     const orderBy: Prisma.DeckOrderByWithRelationInput[] =
@@ -81,7 +89,7 @@ export async function GET(req: Request) {
       take: limit,
     });
 
-    return NextResponse.json({ decks: decks.map(serialize) });
+    return NextResponse.json({ decks: await serializeDecks(decks) });
   } catch (error) {
     console.error("Хуваалцсан багцууд ачаалахад алдаа:", error);
     return NextResponse.json(

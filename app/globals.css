@@ -20,7 +20,9 @@
   --shadow-sm: 0 2px 10px rgba(42, 34, 23, .05);
   --shadow-md: 0 16px 42px rgba(42, 34, 23, .09);
   --shadow-lg: 0 28px 80px rgba(42, 34, 23, .15);
+  --sidebar-w: 16.5rem;
 }
+:root[data-sidebar="collapsed"] { --sidebar-w: 5.25rem; }
 
 @theme inline {
   --color-background: var(--background);
@@ -97,7 +99,7 @@ textarea:focus-visible, select:focus-visible {
 }
 .app-content { padding-bottom: 6.75rem; }
 @media (min-width: 1024px) {
-  .app-content { padding-left: 16.5rem; padding-bottom: 0; }
+  .app-content { padding-left: var(--sidebar-w); padding-bottom: 0; transition: padding-left .2s ease; }
 }
 .page-canvas {
   width: 100%;
@@ -114,14 +116,19 @@ textarea:focus-visible, select:focus-visible {
   left: 0;
   z-index: 40;
   display: none;
-  width: 16.5rem;
+  width: var(--sidebar-w);
   flex-direction: column;
   border-right: 1px solid rgba(215, 222, 234, .82);
   background: rgba(247, 249, 253, .76);
   padding: 1.25rem;
   box-shadow: 10px 0 40px rgba(31, 42, 68, .035);
   backdrop-filter: blur(24px);
+  transition: width .2s ease, padding .2s ease;
+  overflow-x: hidden;
 }
+.app-sidebar[data-collapsed="true"] { width: 5.25rem; padding-inline: 0.75rem; }
+.app-sidebar[data-collapsed="true"] .nav-link { justify-content: center; padding-inline: 0; }
+.app-sidebar[data-collapsed="true"] .btn-primary { padding-inline: 0; }
 @media (min-width: 1024px) { .app-sidebar { display: flex; } }
 .mobile-topbar {
   position: sticky;
@@ -438,7 +445,6 @@ textarea:focus-visible, select:focus-visible {
   to { opacity: 0; transform: translate(-50%, -49%) scale(.985); }
 }
 
-/* Compatibility for existing route markup while it adopts the shared system. */
 .app-shell.text-white, .app-shell .text-white { color: var(--foreground) !important; }
 .app-shell [class*="text-slate-4"], .app-shell [class*="text-slate-5"] { color: var(--text-secondary) !important; }
 .app-shell [class*="text-slate-6"], .app-shell [class*="text-slate-7"] { color: var(--text-muted) !important; }

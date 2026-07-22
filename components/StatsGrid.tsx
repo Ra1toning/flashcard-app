@@ -20,8 +20,8 @@ export default function StatsGrid() {
   const stats = statsQuery.data ?? { totalWords: 0, mastered: 0, streak: 0, accuracy: 0 };
   const items = [
     { label: "Нийт үг", value: stats.totalWords },
-    { label: "Сайн мэддэг", value: stats.mastered },
-    { label: "Дараалсан өдөр", value: stats.streak },
+    { label: "Сурсан үг", value: stats.mastered },
+    { label: "Өдөр дараалсан", value: stats.streak },
     { label: "Зөв хариулт", value: `${stats.accuracy}%` },
   ];
 

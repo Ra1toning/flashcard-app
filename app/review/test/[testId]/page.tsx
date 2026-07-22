@@ -70,7 +70,7 @@ export default function DeckTestPage({ params }: { params: Promise<{ testId: str
         config={{ mode, direction, cards: sessionCards }}
         timeLimit={timeLimit}
         onComplete={() => undefined}
-        onExit={() => setSessionCards(null)}
+        onExit={() => router.push("/dashboard")}
       />
     );
   }

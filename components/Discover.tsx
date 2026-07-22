@@ -1,16 +1,22 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Tabs from "@radix-ui/react-tabs";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Search, X } from "lucide-react";
+import { ArrowRight, Flag, Search, Star, X } from "lucide-react";
 import { MotionItem, PageMotion } from "@/components/ui/Motion";
-import { CollectionSkeleton } from "@/components/ui/Skeletons";
+import { DiscoverSkeleton } from "@/components/ui/Skeletons";
 import { fetchJson } from "@/lib/http";
 import DecorativeLayer from "@/components/ui/DecorativeLayer";
+import StarRating from "@/components/StarRating";
+import ReportDialog from "@/components/ReportDialog";
+import type { ReportReason } from "@/lib/report";
 
+type DeckRating = { average: number; count: number };
 type PublicDeck = {
   id: string;
   name: string;
@@ -20,6 +26,7 @@ type PublicDeck = {
   words: number;
   users: number;
   createdAt: string;
+  rating: DeckRating;
 };
 type PublicDeckDetail = {
   id: string;
@@ -33,10 +40,19 @@ type Filter = "all" | "trending" | "popular" | "new";
 
 export default function DiscoverPage() {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const { status } = useSession();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<PublicDeck | null>(null);
   const [notice, setNotice] = useState("");
+  const [reportTarget, setReportTarget] = useState<string | null>(null);
+  const [reportError, setReportError] = useState("");
+
+  function showNotice(message: string) {
+    setNotice(message);
+    window.setTimeout(() => setNotice(""), 3000);
+  }
 
   const decksQuery = useQuery({
     queryKey: ["discover", filter],
@@ -67,6 +83,27 @@ export default function DiscoverPage() {
     },
     onError: (error) => setNotice(error instanceof Error ? error.message : "Алдаа гарлаа."),
   });
+  const reportMutation = useMutation({
+    mutationFn: ({ deckId, category, detail }: { deckId: string; category: ReportReason; detail: string }) => fetchJson<{ success: boolean }>(`/api/decks/${deckId}/report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category, detail }),
+    }),
+    onSuccess: () => {
+      setReportTarget(null);
+      setReportError("");
+      showNotice("Мэдэгдсэнд баярлалаа. Бид шалгаж үзье.");
+    },
+    onError: (error) => setReportError(error instanceof Error ? error.message : "Мэдээллийг илгээж чадсангүй."),
+  });
+
+  function saveDeck(deckId: string) {
+    if (status !== "authenticated") {
+      router.push("/auth/signin");
+      return;
+    }
+    addMutation.mutate(deckId);
+  }
 
   const decks = decksQuery.data?.decks ?? [];
   const stats = statsQuery.data ?? { totalDecks: 0, totalCards: 0, totalUsers: 0 };
@@ -75,7 +112,7 @@ export default function DiscoverPage() {
     return !search || deck.name.toLowerCase().includes(search) || deck.author.toLowerCase().includes(search);
   }), [decks, query]);
 
-  if (decksQuery.isPending) return <CollectionSkeleton />;
+  if (decksQuery.isPending) return <DiscoverSkeleton />;
 
   return (
     <div className="app-shell app-content">
@@ -84,7 +121,7 @@ export default function DiscoverPage() {
           <div>
             <div className="eyebrow mb-3">Бусдын бүтээсэн суралцах материал</div>
             <h1 className="text-3xl font-bold tracking-[-0.04em] sm:text-4xl">Хуваалцсан багцууд</h1>
-            <p className="mt-2 text-[#74727c]">Найзуудынхаа хуваалцсан сангаас хэрэгтэй багцаа олж, өөрийн санд нэмээрэй.</p>
+            <p className="mt-2 text-[#74727c]">Бусдын бүтээсэн багцаас хэрэгтэй үгсээ олж, өөрийн сандаа нэмээрэй.</p>
           </div>
           <button onClick={() => Promise.all([decksQuery.refetch(), statsQuery.refetch()])} disabled={decksQuery.isFetching} className="btn-secondary w-fit px-4 py-2.5 text-sm disabled:opacity-50">
             {decksQuery.isFetching ? "Шинэчилж байна..." : "Шинэчлэх"}
@@ -147,7 +184,14 @@ export default function DiscoverPage() {
                   <button onClick={() => setSelected(deck)} className="relative z-10 flex flex-1 flex-col p-5 text-left">
                     <div className="flex items-center justify-between gap-4 text-[11px] font-semibold text-[#858995]">
                       <span className="truncate">{deck.author}</span>
-                      <span className="shrink-0">Бусдад нээлттэй</span>
+                      {deck.rating.count > 0 ? (
+                        <span className="inline-flex shrink-0 items-center gap-1 text-[#9a6418]">
+                          <Star className="h-3 w-3 fill-[#e6a52c] text-[#e6a52c]" />
+                          {deck.rating.average.toFixed(1)} ({deck.rating.count})
+                        </span>
+                      ) : (
+                        <span className="shrink-0 text-[#a9adb8]">Шинэ</span>
+                      )}
                     </div>
 
                     <div className="mt-5">
@@ -161,11 +205,11 @@ export default function DiscoverPage() {
 
                     <div className="mt-auto flex items-center justify-between gap-4 pt-6 text-xs text-[#777c89]">
                       <span>{deck.words} карт</span>
-                      <span>{deck.users} хэрэглэгчийн санд</span>
+                      <span>{deck.users} хүн хадгалсан</span>
                     </div>
                   </button>
                   <button
-                    onClick={() => addMutation.mutate(deck.id)}
+                    onClick={() => saveDeck(deck.id)}
                     disabled={addMutation.isPending}
                     className="relative z-10 flex h-12 items-center justify-between border-t border-[#e7dece] px-5 text-sm font-semibold text-[#84530f] transition hover:bg-[#fff6df] disabled:opacity-50"
                   >
@@ -240,9 +284,19 @@ export default function DiscoverPage() {
               </div>
 
               <div className="flex flex-col gap-3 border-t border-[#e6e8ec] bg-[#fafbfc] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                <p className="text-xs leading-5 text-[#777c89]">Хадгалахад засварлаж болох, зөвхөн танд харагдах хуулбар үүснэ.</p>
+                <div className="flex items-center gap-4">
+                  {selected.rating.count > 0 && (
+                    <span className="inline-flex items-center gap-1.5 text-xs text-[#7e828e]">
+                      <StarRating value={Math.round(selected.rating.average)} readOnly size={14} />
+                      {selected.rating.average.toFixed(1)} ({selected.rating.count})
+                    </span>
+                  )}
+                  <button onClick={() => { setReportError(""); setReportTarget(selected.id); }} className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-[#858995] transition hover:text-[#a84040]">
+                    <Flag className="h-3.5 w-3.5" />Мэдэгдэх
+                  </button>
+                </div>
                 <button
-                  onClick={() => addMutation.mutate(selected.id)}
+                  onClick={() => saveDeck(selected.id)}
                   disabled={addMutation.isPending}
                   className="btn-primary shrink-0 px-5 py-2.5 text-sm disabled:opacity-50"
                 >
@@ -253,6 +307,16 @@ export default function DiscoverPage() {
           )}
         </Dialog.Portal>
       </Dialog.Root>
+
+      <ReportDialog
+        open={reportTarget !== null}
+        onOpenChange={(open) => { if (!open) { setReportTarget(null); setReportError(""); } }}
+        onSubmit={(payload) => reportTarget && reportMutation.mutate({ deckId: reportTarget, ...payload })}
+        pending={reportMutation.isPending}
+        error={reportError}
+        title="Багц мэдэгдэх"
+        subtitle="Энэ багцад асуудал байвал шалтгааныг сонгож бидэнд мэдэгдээрэй."
+      />
 
       <AnimatePresence>
         {notice && (

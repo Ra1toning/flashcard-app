@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Library from "@/components/Library";
-import { CollectionSkeleton } from "@/components/ui/Skeletons";
+import { LibrarySkeleton } from "@/components/ui/Skeletons";
 import { fetchJson } from "@/lib/http";
 import type { Deck } from "@/types";
 
@@ -12,7 +12,7 @@ export default function LibraryPage() {
     queryFn: () => fetchJson<{ myDecks: Deck[] }>("/api/decks"),
   });
 
-  if (decksQuery.isPending) return <CollectionSkeleton />;
+  if (decksQuery.isPending) return <LibrarySkeleton />;
 
   return (
     <div className="app-shell app-content">

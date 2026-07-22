@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { createStarterDeck } from "@/lib/starter-deck";
 import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
@@ -54,6 +55,12 @@ export async function POST(req: Request) {
     });
 
     const { password: _, ...userWithoutPassword } = user;
+
+    try {
+      await createStarterDeck(user.id);
+    } catch (seedError) {
+      console.error("Starter deck seed хийхэд алдаа:", seedError);
+    }
 
     return NextResponse.json(
       { message: "Хэрэглэгч амжилттай үүсгэгдсэн", user: userWithoutPassword },

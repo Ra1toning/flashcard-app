@@ -19,10 +19,6 @@ export async function GET(req: Request, context: RouteContext) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Нэвтрэх шаардлагатай." }, { status: 401 });
-    }
-
     const { deckId } = await context.params;
 
     if (!deckId) {
@@ -48,7 +44,7 @@ export async function GET(req: Request, context: RouteContext) {
         },
         progress: {
           where: {
-            userId: session.user.id,
+            userId: session?.user?.id ?? "",
           },
         },
       },
@@ -58,12 +54,26 @@ export async function GET(req: Request, context: RouteContext) {
       return NextResponse.json({ error: "Багц олдсонгүй." }, { status: 404 });
     }
 
-    const isOwner = deck.authorId === session.user.id;
+    const isOwner = deck.authorId === session?.user?.id;
     const isPublic = deck.isPublic;
 
     if (!isOwner && !isPublic) {
       return NextResponse.json({ error: "Энэ багцыг харах эрхгүй байна." }, { status: 403 });
     }
+
+    const [ratingAgg, myRating] = await Promise.all([
+      prisma.rating.aggregate({
+        where: { deckId },
+        _avg: { value: true },
+        _count: { value: true },
+      }),
+      session?.user?.id
+        ? prisma.rating.findUnique({
+            where: { userId_deckId: { userId: session.user.id, deckId } },
+            select: { value: true },
+          })
+        : Promise.resolve(null),
+    ]);
 
     const progress = deck.progress[0];
     const totalCards = deck.cards.length;
@@ -98,6 +108,11 @@ export async function GET(req: Request, context: RouteContext) {
       })),
       isOwner,
       isPublic: deck.isPublic,
+      rating: {
+        average: ratingAgg._avg.value ?? 0,
+        count: ratingAgg._count.value,
+        mine: myRating?.value ?? 0,
+      },
     };
 
     return NextResponse.json(deckDetail);

@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { createStarterDeck } from "@/lib/starter-deck";
 
 const providers: NextAuthOptions["providers"] = [
   CredentialsProvider({
@@ -69,6 +70,16 @@ export const authOptions: NextAuthOptions = {
         session.user.role = (token.role as Role) ?? "USER";
       }
       return session;
+    },
+  },
+  events: {
+    async createUser({ user }) {
+      if (!user.id) return;
+      try {
+        await createStarterDeck(user.id);
+      } catch (seedError) {
+        console.error("Starter deck seed хийхэд алдаа:", seedError);
+      }
     },
   },
   secret: process.env.NEXTAUTH_SECRET,

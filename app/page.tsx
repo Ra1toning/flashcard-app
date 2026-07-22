@@ -38,7 +38,7 @@ export default function LandingPage() {
       <main>
         <section className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl items-center gap-14 px-5 py-16 sm:px-8 lg:grid-cols-[.9fr_1.1fr] lg:py-20">
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .3 }}>
-            <p className="eyebrow mb-4">стресс үгүй хялбар суралц</p>
+            <p className="eyebrow mb-4">Өдөр бүр бага багаар суралц</p>
             <h1 className=" max-w-2xl text-5xl font-bold leading-[1.02] tracking-[-.065em] sm:text-7xl">
 
                <span className="brand-wordmark-font">
@@ -48,14 +48,14 @@ export default function LandingPage() {
               <span className="block text-[#9a6418]">Flashcards.</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-[#656976]">
-              Хүссэн хэл, хичээл, дуртай сэдвээ хялбархан нүдлээрэй.
+              Сурахыг хүссэн хэл, сэдвийнхээ үгсийг амархан тогтоогоорой.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link href="/auth/signup" className="btn-primary px-6 py-3.5">Туршиж үзэх <ArrowRight className="h-4 w-4" /></Link>
               <Link href="/auth/signin" className="btn-secondary px-6 py-3.5">Нэвтрэх</Link>
             </div>
             <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#747783]">
-              {["Ямар ч хэл, сэдэв", "Зөвхөн танд зориулагдсан үг цээжлэх арга", "Өргөн хүрээний үгсийн сан"].map((item) => (
+              {["Ямар ч хэл, сэдэв", "Танд тохирсон ухаалаг давталтын арга", "Хязгааргүй үгийн сангаа бүтээгээрэй"].map((item) => (
                 <span key={item} className="flex items-center gap-1.5"><Check className="h-4 w-4 text-[#238769]" />{item}</span>
               ))}
             </div>
@@ -70,7 +70,7 @@ export default function LandingPage() {
               </div>
               <div className="grid min-h-[292px] place-items-center px-6 py-10 text-center">
                 <div>
-                  <div className="mt-5 text-4xl font-bold tracking-[-.04em]">자기계발</div>
+                  <div className="mt-5 text-4xl font-bold tracking-[-.04em]">외우자!</div>
                   <div className="mx-auto mt-8 max-w-sm rounded-2xl border border-[#dfe3ec] bg-white/85 px-4 py-3.5 text-left text-sm text-[#9a9da8] shadow-sm">
                     Хариултаа бичнэ үү...
                   </div>
@@ -91,9 +91,9 @@ export default function LandingPage() {
         <section className="border-y border-white/80 bg-white/60 backdrop-blur-xl">
           <div className="mx-auto grid max-w-7xl md:grid-cols-3">
             {[
-              { number: "01", title: "Өөрийн сангаа үүсгэ", text: "Сурахыг хүссэн үгсээ нэг дор хадгалж, өдөр бүр давтахад бэлэн болгоорой.", icon: Plus },
-              { number: "02", title: "Картаа эргүүлээд шалга", text: "Асуулт, хариултаар нь ээлжлэн харж, мэдлэгээ бататгангаа шинэ үгсээ тогтоогоорой.", icon: Layers3 },
-              { number: "03", title: "Өдөр бүр багахан нүдэл", text: "Давтах цаг нь болсон үгсээ хараад, өдөр бүр хэдхэн минут зарцуулан тогтоогоорой.", icon: ArrowRight },
+              { number: "01", title: "Өөрийн үгийн сангаа үүсгэ", text: "Сурахыг хүссэн үгсээ цуглуулаад, хүссэн үедээ давтаарай.", icon: Plus },
+              { number: "02", title: "Картаар өөрийгөө шалга", text: "Үг, утгыг ээлжлэн харж, илүү амархан тогтоогоорой.", icon: Layers3 },
+              { number: "03", title: "Өдөр бүр хэдхэн минут давт", text: "Давтах цаг нь болсон үгсээ хараад, өдөр бүр хэдхэн минут зарцуулан тогтоогоорой.", icon: ArrowRight },
             ].map(({ number, title, text, icon: Icon }) => (
               <motion.article whileHover={{ backgroundColor: "rgba(255,255,255,.72)" }} key={number} className="border-[#e2e3e7] px-6 py-9 transition md:border-r md:last:border-r-0">
                 <div className="flex items-center justify-between">
@@ -112,7 +112,7 @@ export default function LandingPage() {
             <div>
               <p className="eyebrow">Нэг суралцах урсгал</p>
               <h2 className="mt-3 text-3xl font-bold tracking-[-.04em]">Сурах зүйлээ нэг дороос ойлгомжтойгоор.</h2>
-              <p className="mt-4 text-sm leading-7 text-[#707480]">Nudleye таны үгсийг зүгээр нэг хадгалаад орхихгүй. Юугаа давтах, юуг нь сайн мэддэг болсон, хаанаас үргэлжлүүлэхээ нэг дороос амархан харна.</p>
+              <p className="mt-4 text-sm leading-7 text-[#707480]">Nudleye зөвхөн үг хадгалах газар биш. Юуг давтах, ямар үгээ сайн сурсан, дараа нь хаанаас эхлэхээ хялбархан хянаарай.</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               {[
@@ -132,6 +132,16 @@ export default function LandingPage() {
           </div>
         </section>
       </main>
+
+      <footer className="border-t border-white/80 bg-white/60 px-5 py-8 backdrop-blur-xl sm:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-xs text-[#8c909c] sm:flex-row">
+          <span>© {new Date().getFullYear()} Nudleye</span>
+          <div className="flex items-center gap-5">
+            <Link href="/privacy" className="hover:text-[#4a4d58]">Нууцлалын бодлого</Link>
+            <Link href="/terms" className="hover:text-[#4a4d58]">Үйлчилгээний нөхцөл</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

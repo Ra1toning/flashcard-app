@@ -16,7 +16,7 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="app-shell relative grid min-h-screen place-items-center overflow-hidden px-4 py-10">
+    <div className="app-shell app-content relative grid min-h-screen place-items-center overflow-hidden px-4 py-10">
       <div className="relative w-full max-w-md text-center">
         <Link href="/" className="mb-8 flex items-center justify-center gap-2.5 font-semibold">
           <BrandLogo markClassName="h-9 w-9" />

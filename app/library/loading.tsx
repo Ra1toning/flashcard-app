@@ -1,5 +1,5 @@
-import { CollectionSkeleton } from "@/components/ui/Skeletons";
+import { LibrarySkeleton } from "@/components/ui/Skeletons";
 
 export default function Loading() {
-  return <CollectionSkeleton />;
+  return <LibrarySkeleton />;
 }

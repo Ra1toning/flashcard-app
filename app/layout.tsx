@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     default: "Nudleye - Хар, тогтоо, давт",
     template: "%s | Nudleye",
   },
-  description: "Үгээ нүдэлж, flashcard-аар тогтоон, өдөр бүр ухаалгаар давтах суралцах орчин.",
+  description: "Үгээ илүү амархан тогтоож, flashcard ашиглан өдөр бүр давтаарай.",
   applicationName: "Nudleye",
   icons: {
     icon: "/logo.png",
@@ -33,13 +33,13 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Nudleye - Хар, тогтоо, давт",
-    description: "Үгээ нүдэлж, flashcard-аар тогтоон, өдөр бүр ухаалгаар давт.",
+    description: "Үгээ илүү амархан тогтоож, flashcard ашиглан өдөр бүр давтаарай.",
     images: [{ url: "/logo.png", width: 600, height: 600, alt: "Nudleye" }],
   },
   twitter: {
     card: "summary",
     title: "Nudleye - Хар, тогтоо, давт",
-    description: "Үгээ нүдэлж, flashcard-аар тогтоон, өдөр бүр ухаалгаар давт.",
+    description: "Үгээ илүү амархан тогтоож, flashcard ашиглан өдөр бүр давтаарай.",
     images: ["/logo.png"],
   },
 };

@@ -13,10 +13,10 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/library/:path*",
-    "/discover/:path*",
     "/review/:path*",
     "/test/:path*",
-    "/deck/:path*",
+    "/deck/create",
+    "/deck/:id/edit",
     "/profile/:path*",
   ],
 };

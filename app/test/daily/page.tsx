@@ -49,10 +49,7 @@ export default function DailyTestPage() {
         config={{ mode: "mixed", direction: "mixed", cards: sessionCards }}
         timeLimit={sessionCards.length * 25}
         onComplete={() => queryClient.invalidateQueries({ queryKey: ["daily-review"] })}
-        onExit={async () => {
-          setSessionStarted(false);
-          await dailyQuery.refetch();
-        }}
+        onExit={() => router.push("/dashboard")}
       />
     );
   }
@@ -74,8 +71,8 @@ export default function DailyTestPage() {
           <>
             <header className="mb-6">
               <p className="eyebrow mb-2">Өнөөдрийн queue</p>
-              <h1 className="text-3xl font-bold tracking-[-.04em]">Давтахад бэлэн {dueCards.length} үг</h1>
-              <p className="mt-2 text-sm text-[#737580]">Энэ удаад хамгийн ихдээ 20 картыг төвлөрч давтана.</p>
+              <h1 className="text-3xl font-bold tracking-[-.04em]">{dueCards.length} үг давтахад бэлэн байна</h1>
+              <p className="mt-2 text-sm text-[#737580]">Энэ удаа 20 хүртэл картыг тайван давтаарай.</p>
             </header>
 
             <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flashcard-surface relative overflow-hidden p-5 sm:p-7">
@@ -86,8 +83,8 @@ export default function DailyTestPage() {
                     <span className="flex items-center gap-2"><Layers3 className="h-4 w-4 text-[#b7791f]" />{Math.min(dueCards.length, 20)} карт</span>
                     <span className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[#e68a24]" />{streak} өдөр</span>
                   </div>
-                  <h2 className="mt-6 text-2xl font-bold">Санах, шалгах, дараа дахин давтах.</h2>
-                  <p className="mt-2 text-sm leading-6 text-[#676b78]">Хариултаа бичих эсвэл сонгоод, зөв хариуг шууд шалгана.</p>
+                  <h2 className="mt-6 text-2xl font-bold">Санаж, шалгаж, бататгаарай.</h2>
+                  <p className="mt-2 text-sm leading-6 text-[#676b78]">Хариултаа оруулаад, мэдлэгээ шууд шалгаарай.</p>
                   <button onClick={() => setSessionStarted(true)} className="btn-primary mt-6 px-5 py-3 text-sm">
                     Давталт эхлүүлэх <ArrowRight className="h-4 w-4" />
                   </button>

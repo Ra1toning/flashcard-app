@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useQueries } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { ArrowRight, Layers3, Plus } from "lucide-react";
+import { ArrowRight, Flame, Layers3, Plus } from "lucide-react";
 import DeckList from "@/components/DeckList";
 import StatsGrid from "@/components/StatsGrid";
 import { DashboardSkeleton } from "@/components/ui/Skeletons";
@@ -47,6 +47,7 @@ export default function DashboardPage() {
   };
   const dueCount = daily.stats.total;
   const sample = daily.cards?.[0];
+  const streakAtRisk = daily.streak > 0 && dueCount > 0;
 
   return (
     <div className="app-shell app-content">
@@ -57,7 +58,7 @@ export default function DashboardPage() {
             <h1 className="text-3xl font-bold tracking-[-0.04em] sm:text-4xl">
               Сайн уу, {session.user?.name?.split(" ")[0] || "Суралцагч"}.
             </h1>
-            <p className="mt-2 text-sm text-[#737580]">Өнөөдөр хийх хамгийн чухал зүйлээс эхэлье.</p>
+            <p className="mt-2 text-sm text-[#737580]">Өнөөдрийн жижиг зорилгоо биелүүлцгээе.</p>
           </div>
           <Link href="/deck/create" className="btn-secondary w-fit px-4 py-2.5 text-sm">
             <Plus className="h-4 w-4" /> Шинэ багц
@@ -80,22 +81,32 @@ export default function DashboardPage() {
                   Өнөөдрийн даалгавар
                 </div>
                 <h2 className="mt-3 text-2xl font-bold tracking-[-.035em]">
-                  {dueCount > 0 ? `${dueCount} үг таныг хүлээж байна` : "Өнөөдрийн queue цэвэр байна"}
+                  {dueCount > 0 ? `Өнөөдөр ${dueCount} үг давтах үлдлээ` : "Өнөөдрийн давтах үг дууссан байна 🎉"}
                 </h2>
                 <p className="mt-2 max-w-xl text-sm leading-6 text-[#596175]">{daily.recommendation}</p>
                 <div className="mt-5 flex flex-wrap items-center gap-4">
                   <Link href="/test/daily" className="btn-primary px-4 py-2.5 text-sm">
                     Давталт эхлүүлэх <ArrowRight className="h-4 w-4" />
                   </Link>
-                  <span className="text-xs font-medium text-[#687087]">{daily.streak} өдөр дараалан</span>
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${
+                    daily.streak === 0 ? "bg-[#f1f2f5] text-[#777985]" : streakAtRisk ? "bg-[#fff0d6] text-[#9a6418]" : "bg-[#fde8d0] text-[#c2560a]"
+                  }`}>
+                    <Flame className={`h-3.5 w-3.5 ${daily.streak > 0 ? "fill-current" : ""}`} />
+                    {daily.streak} өдөр дараалсан
+                  </span>
                 </div>
+                {streakAtRisk && (
+                  <p className="mt-3 text-xs font-semibold text-[#c2560a]">
+                    Дарааллаа хадгалаарай! Өнөөдрийн {dueCount} үгээ давтвал streak үргэлжилнэ.
+                  </p>
+                )}
               </div>
 
               <div className="relative mx-auto w-full max-w-[210px]">
                 <motion.div whileHover={{ y: -3, rotate: -.5 }} className="relative grid min-h-40 place-items-center rounded-2xl border border-white bg-white/90 p-5 text-center shadow-[0_18px_35px_rgba(40,55,90,.11)]">
                   <span className="absolute left-3 top-3 text-[10px] font-bold uppercase tracking-wider text-[#9297a7]">Дараагийн үг</span>
-                  <strong className="mt-4 text-xl">{sample?.front || (dueCount ? "Хариугаа санахад бэлэн үү?" : "Сайн ажиллалаа")}</strong>
-                  <span className="mt-3 text-xs text-[#8a8e9c]">{sample ? "Өнөөдөр ганцхан үг цээжилчих үү?" : "Маргааш дахин үргэлжлүүлцгээе"}</span>
+                  <strong className="mt-4 text-xl">{sample?.front || (dueCount ? "Санаж чадав уу?" : "Маш сайн!")}</strong>
+                  <span className="mt-3 text-xs text-[#8a8e9c]">{sample ? "Өнөөдөр энд хүргээд зогсох уу?" : "Маргааш үргэлжлүүлье"}</span>
                 </motion.div>
               </div>
             </div>

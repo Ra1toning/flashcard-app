@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   ArrowRight,
   Copy,
+  Flag,
   Globe2,
   Lock,
   Pencil,
@@ -17,7 +19,11 @@ import {
 } from "lucide-react";
 import { fetchJson } from "@/lib/http";
 import DecorativeLayer from "@/components/ui/DecorativeLayer";
+import StarRating from "@/components/StarRating";
+import ReportDialog from "@/components/ReportDialog";
+import type { ReportReason } from "@/lib/report";
 
+export type DeckRating = { average: number; count: number; mine: number };
 export type DeckDetail = {
   id: string;
   name: string;
@@ -31,6 +37,7 @@ export type DeckDetail = {
   isOwner?: boolean;
   isPublic?: boolean;
   creator?: { name: string };
+  rating?: DeckRating;
   wordsList: Array<{
     id: string;
     korean: string;
@@ -42,11 +49,21 @@ export type DeckDetail = {
 
 export default function DeckClient({ deck }: { deck: DeckDetail }) {
   const router = useRouter();
+  const { status } = useSession();
   const queryClient = useQueryClient();
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [copyError, setCopyError] = useState("");
+  const [toast, setToast] = useState("");
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportError, setReportError] = useState("");
+  const [rating, setRating] = useState<DeckRating>(deck.rating ?? { average: 0, count: 0, mine: 0 });
   const card = deck.wordsList[index];
+
+  function flashToast(message: string) {
+    setToast(message);
+    window.setTimeout(() => setToast(""), 3000);
+  }
 
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
@@ -92,14 +109,60 @@ export default function DeckClient({ deck }: { deck: DeckDetail }) {
     onError: (error) => setCopyError(error instanceof Error ? error.message : "Багцыг хуулж чадсангүй."),
   });
 
+  const rateMutation = useMutation({
+    mutationFn: (value: number) => fetchJson<{ rating: DeckRating }>(`/api/decks/${deck.id}/rate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value }),
+    }),
+    onSuccess: (data) => {
+      setRating(data.rating);
+      flashToast("Үнэлгээ хадгаллаа. Баярлалаа!");
+      queryClient.invalidateQueries({ queryKey: ["deck", deck.id] });
+    },
+    onError: (error) => flashToast(error instanceof Error ? error.message : "Үнэлгээг хадгалж чадсангүй."),
+  });
+
+  const reportMutation = useMutation({
+    mutationFn: (payload: { category: ReportReason; detail: string }) => fetchJson<{ success: boolean }>(`/api/decks/${deck.id}/report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+    onSuccess: () => {
+      setReportOpen(false);
+      setReportError("");
+      flashToast("Мэдэгдсэнд баярлалаа. Бид шалгаж үзье.");
+    },
+    onError: (error) => setReportError(error instanceof Error ? error.message : "Мэдээллийг илгээж чадсангүй."),
+  });
+
+  function rate(value: number) {
+    if (status !== "authenticated") {
+      router.push("/auth/signin");
+      return;
+    }
+    rateMutation.mutate(value);
+  }
+
   function deleteDeck() {
     if (window.confirm(`"${deck.name}" багцыг бүрмөсөн устгах уу?`)) deleteMutation.mutate();
+  }
+
+  function copyDeck() {
+    if (status !== "authenticated") {
+      router.push("/auth/signin");
+      return;
+    }
+    copyMutation.mutate();
   }
 
   function selectCard(cardIndex: number) {
     setIndex(cardIndex);
     setFlipped(false);
   }
+
+  const canRate = !deck.isOwner && deck.isPublic;
 
   return (
     <div className="app-shell app-content min-h-screen">
@@ -108,7 +171,7 @@ export default function DeckClient({ deck }: { deck: DeckDetail }) {
           <Link href="/library" className="btn-ghost px-2 py-2 text-sm">
             <ArrowLeft className="h-4 w-4" />Миний сан
           </Link>
-          {deck.isOwner && (
+          {deck.isOwner ? (
             <div className="flex gap-1">
               <Link href={`/deck/${deck.id}/edit`} className="btn-ghost px-3 py-2 text-sm">
                 <Pencil className="h-4 w-4" />Засах
@@ -117,7 +180,11 @@ export default function DeckClient({ deck }: { deck: DeckDetail }) {
                 <Trash2 className="h-4 w-4" />{deleteMutation.isPending ? "Устгаж байна" : "Устгах"}
               </button>
             </div>
-          )}
+          ) : deck.isPublic ? (
+            <button onClick={() => setReportOpen(true)} className="btn-ghost px-3 py-2 text-xs text-[#858995] hover:text-[#a84040]">
+              <Flag className="h-3.5 w-3.5" />Мэдэгдэх
+            </button>
+          ) : null}
         </div>
 
         <header className="panel relative mb-6 flex flex-col justify-between gap-5 overflow-hidden p-5 sm:flex-row sm:items-start sm:p-6">
@@ -136,8 +203,26 @@ export default function DeckClient({ deck }: { deck: DeckDetail }) {
               </p>
               <div className="mt-3 flex items-center gap-4 text-xs text-[#7e828e]">
                 <span>{deck.words} карт</span>
-                {deck.progress > 0 && <span>{deck.progress}% эзэмшсэн</span>}
+                {deck.progress > 0 && <span>{deck.progress}% тогтоосон</span>}
+                {rating.count > 0 && (
+                  <span className="inline-flex items-center gap-1">
+                    <StarRating value={Math.round(rating.average)} readOnly size={13} />
+                    {rating.average.toFixed(1)} · {rating.count}
+                  </span>
+                )}
               </div>
+
+              {canRate && (
+                <div className="mt-4 rounded-2xl border border-[#ece3d0] bg-[#fffdf7]/80 p-4">
+                  <p className="text-xs font-semibold text-[#84530f]">{rating.mine ? "Таны үнэлгээ" : "Энэ багцыг үнэлээрэй"}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    <StarRating value={rating.mine} onRate={rate} disabled={rateMutation.isPending} size={26} />
+                    <span className="text-xs text-[#7e828e]">
+                      {rating.count > 0 ? `Дундаж ${rating.average.toFixed(1)} (${rating.count} үнэлгээ)` : "Хамгийн түрүүнд үнэл"}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -146,7 +231,7 @@ export default function DeckClient({ deck }: { deck: DeckDetail }) {
               <Play className="h-4 w-4 fill-current" />Картаар сурах
             </Link>
           ) : !deck.isOwner ? (
-            <button onClick={() => copyMutation.mutate()} disabled={copyMutation.isPending} className="btn-primary w-fit shrink-0 px-5 py-3 text-sm disabled:opacity-50">
+            <button onClick={copyDeck} disabled={copyMutation.isPending} className="btn-primary w-fit shrink-0 px-5 py-3 text-sm disabled:opacity-50">
               <Copy className="h-4 w-4" />{copyMutation.isPending ? "Хадгалж байна..." : "Хадгалах"}
             </button>
           ) : null}
@@ -156,7 +241,7 @@ export default function DeckClient({ deck }: { deck: DeckDetail }) {
 
         {deck.wordsList.length === 0 ? (
           <section className="study-set-card px-6 py-12 text-center">
-            <h2 className="font-bold">Энэ багц хоосон байна</h2>
+            <h2 className="font-bold">Энэ багцад одоогоор үг алга байна</h2>
             <p className="mt-2 text-sm text-[#777b87]">Эхний front/back картаа нэмээд суралцаж эхлээрэй.</p>
             {deck.isOwner && <Link href={`/deck/${deck.id}/edit`} className="btn-primary mt-5 px-4 py-2.5 text-sm">Үг нэмэх</Link>}
           </section>
@@ -172,7 +257,7 @@ export default function DeckClient({ deck }: { deck: DeckDetail }) {
                   >
                     <DecorativeLayer variant="flashcard" />
                     <div className="flex items-center justify-between border-b border-[#e4e6eb] px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-[#8c909c]">
-                      <span>{flipped ? "Хариу тал" : "Асуух тал"}</span>
+                      <span>{flipped ? "Ар тал" : "Нүүр тал"}</span>
                       <span>{index + 1} / {deck.wordsList.length}</span>
                     </div>
                     <div className="grid min-h-[270px] place-items-center px-6 py-10">
@@ -187,7 +272,7 @@ export default function DeckClient({ deck }: { deck: DeckDetail }) {
                           <div className="text-4xl font-bold tracking-[-.04em] sm:text-5xl">
                             {flipped ? card.mongolian : card.korean}
                           </div>
-                          <div className="mt-6 text-xs text-[#818591]">Дарж хариуг харах</div>
+                          <div className="mt-6 text-xs text-[#818591]">Дарж хариуг хараарай</div>
                         </motion.div>
                       </AnimatePresence>
                     </div>
@@ -231,6 +316,26 @@ export default function DeckClient({ deck }: { deck: DeckDetail }) {
           </>
         ) : null}
       </main>
+
+      <ReportDialog
+        open={reportOpen}
+        onOpenChange={(open) => { setReportOpen(open); if (!open) setReportError(""); }}
+        onSubmit={(payload) => reportMutation.mutate(payload)}
+        pending={reportMutation.isPending}
+        error={reportError}
+        title="Багц мэдэгдэх"
+        subtitle="Энэ багцад асуудал байвал шалтгааныг сонгож бидэнд мэдэгдээрэй."
+      />
+
+      <AnimatePresence>
+        {toast && (
+          <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 18 }}
+            role="status" aria-live="polite"
+            className="app-toast fixed bottom-24 left-4 right-4 z-[60] rounded-2xl border px-4 py-3.5 text-sm font-semibold shadow-2xl backdrop-blur-xl sm:left-auto sm:max-w-md lg:bottom-5">
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

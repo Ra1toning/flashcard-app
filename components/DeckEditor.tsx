@@ -183,7 +183,7 @@ export default function DeckEditor({ deckId }: { deckId?: string }) {
               onChange={(event) => { setForm({ ...form, description: event.target.value }); setDirty(true); }}
               className="field"
               maxLength={300}
-              placeholder="Багцын товч тайлбар"
+              placeholder="Энэ багцын талаар товч бичээрэй"
             />
           </div>
           <div>
@@ -208,7 +208,7 @@ export default function DeckEditor({ deckId }: { deckId?: string }) {
           <div className="mb-3 flex items-end justify-between gap-4">
             <div>
               <h2 className="font-bold">Үгийн жагсаалт</h2>
-              <p className="mt-0.5 text-xs text-[#777985]">Enter дарж дараагийн үгийг нэмээрэй.</p>
+              <p className="mt-0.5 text-xs text-[#777985]">Enter дарж дараагийн үгээ нэмээрэй.</p>
             </div>
             <div className="flex items-center gap-3">
               <button onClick={() => setBulkOpen((value) => !value)} className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#84530f]">
@@ -222,8 +222,8 @@ export default function DeckEditor({ deckId }: { deckId?: string }) {
             <div className="mb-3 rounded-2xl border border-[#cfdaf3] bg-[#f3f6ff]/90 p-4 shadow-sm">
               <div className="mb-2 flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="text-sm font-bold">Олон үг нэг дор нэмэх</h3>
-                  <p className="mt-0.5 text-xs text-[#737a8c]">Мөр бүрийг “front - back”, comma эсвэл tab-аар тусгаарлана.</p>
+                  <h3 className="text-sm font-bold">Олон үгийг нэг дор оруулах</h3>
+                  <p className="mt-0.5 text-xs text-[#737a8c]">Мөр бүрийг “үг - утга” хэлбэрээр оруулна.</p>
                 </div>
                 <button onClick={() => setBulkOpen(false)} className="btn-ghost h-8 w-8 p-0" aria-label="Олон мөрийн хэсгийг хаах"><X className="h-4 w-4" /></button>
               </div>
