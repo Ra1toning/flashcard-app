@@ -1,0 +1,14 @@
+{
+  "name": "Nudleye",
+  "short_name": "Nudleye",
+  "description": "Үгээ илүү амархан тогтоож, flashcard ашиглан өдөр бүр давтаарай.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f5f0e6",
+  "theme_color": "#f5f0e6",
+  "icons": [
+    { "src": "/logo.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/logo.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/logo.png", "sizes": "600x600", "type": "image/png", "purpose": "any" }
+  ]
+}

@@ -1,103 +1,147 @@
-// /components/NavBar.tsx
 "use client";
-import React, { useState, useRef, useEffect } from "react";
-import {
-  Search,
-  User,
-  Brain,
-  Home,
-  Library,
-  Compass,
-  LogOut,
-  Settings,
-} from "lucide-react";
-import { useSession, signOut } from "next-auth/react";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { signOut, useSession } from "next-auth/react";
+import { usePathname } from "next/navigation";
+import { Compass, LayoutDashboard, Library, LogOut, PanelLeftClose, PanelLeftOpen, Plus, UserRound } from "lucide-react";
+import BrandLogo from "@/components/ui/BrandLogo";
+import BrandMark from "@/components/ui/BrandMark";
 
-type Props = {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
-};
+const navigation = [
+  { href: "/dashboard", label: "Өнөөдөр", icon: LayoutDashboard },
+  { href: "/library", label: "Миний сан", icon: Library },
+  { href: "/discover", label: "Хуваалцсан", icon: Compass },
+];
 
-export default function NavBar({ activeTab, setActiveTab }: Props) {
+const SIDEBAR_STORAGE_KEY = "nudleye-sidebar-collapsed";
+
+export default function PersistentNavBar() {
   const { data: session, status } = useSession();
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowUserMenu(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    setCollapsed(window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1");
+    setMounted(true);
   }, []);
 
-  const handleSignOut = async () => {
-    await signOut({ callbackUrl: "/" });
-  };
+  useEffect(() => {
+    if (!mounted) return;
+    document.documentElement.setAttribute("data-sidebar", collapsed ? "collapsed" : "expanded");
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, collapsed ? "1" : "0");
+  }, [collapsed, mounted]);
+
+  const hidden = pathname === "/" || pathname.startsWith("/auth/");
+  if (hidden) return null;
+
+  const initials = (session?.user?.name || session?.user?.email || "NU")
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
-    <nav className="relative border-b border-white/5 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-violet-500 to-purple-500 rounded-2xl blur-lg opacity-50" />
-                <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
-                  <Brain className="w-6 h-6" />
-                </div>
-              </div>
-              <span className="text-xl font-bold">FlashDemo</span>
-            </div>
-
-            <div className="hidden md:flex items-center gap-1 bg-white/5 rounded-2xl p-1">
-              {[
-                { id: "home", icon: Home, label: "Home" },
-                { id: "library", icon: Library, label: "Library" },
-                { id: "discover", icon: Compass, label: "Discover" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
-                    activeTab === tab.id
-                      ? "bg-white text-black font-medium"
-                      : "text-white/60 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  <tab.icon className="w-4 h-4" />
-                  <span className="text-sm">{tab.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="hidden md:block relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-              <input
-                type="text"
-                placeholder="Search words..."
-                className="pl-10 pr-4 py-2.5 w-64 rounded-xl bg-white/5 border border-white/10 focus:border-white/20 focus:bg-white/10 focus:outline-none placeholder-white/40 text-sm transition-all"
-                aria-label="Search words"
-              />
-            </div>
-
-            <button className="relative group" aria-label="Profile">
-              <div className="absolute inset-0 bg-gradient-to-r from-violet-500 to-purple-500 rounded-xl blur opacity-0 group-hover:opacity-50 transition-opacity" />
-              <div className="relative w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 flex items-center justify-center transition-all">
-                <User className="w-5 h-5" />
-              </div>
-            </button>
-          </div>
+    <>
+      <aside className="app-sidebar" data-collapsed={collapsed}>
+        <div className={`flex items-center gap-2 ${collapsed ? "flex-col" : "justify-between"}`}>
+          <Link href="/dashboard" aria-label="Nudleye" className="min-w-0">
+            {collapsed ? <BrandMark className="h-9 w-9" /> : <BrandLogo markClassName="h-10 w-10 shrink-0" />}
+          </Link>
+          <button
+            onClick={() => setCollapsed((value) => !value)}
+            className="btn-ghost h-8 w-8 shrink-0 p-0"
+            aria-label={collapsed ? "Цэсийг дэлгэх" : "Цэсийг хумих"}
+            title={collapsed ? "Цэсийг дэлгэх" : "Цэсийг хумих"}
+          >
+            {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </button>
         </div>
-      </div>
-    </nav>
+
+        <nav className="mt-8 space-y-1.5">
+          {!collapsed && <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[.15em] text-[var(--text-muted)]">Workspace</p>}
+          {navigation.map(({ href, label, icon: Icon }) => {
+            const active = pathname === href || pathname.startsWith(`${href}/`);
+            return (
+              <Link
+                key={href}
+                href={href}
+                title={collapsed ? label : undefined}
+                className={`${active ? "nav-link nav-link-active" : "nav-link"} ${collapsed ? "justify-center px-0" : ""}`}
+              >
+                <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} aria-hidden="true" />
+                {!collapsed && <span>{label}</span>}
+                {active && !collapsed && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-current" />}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <Link
+          href="/deck/create"
+          title={collapsed ? "Шинэ багц" : undefined}
+          className={`btn-primary mt-7 w-full px-4 py-3 text-sm ${collapsed ? "justify-center px-0" : ""}`}
+        >
+          <Plus className="h-4 w-4 shrink-0" aria-hidden="true" />
+          {!collapsed && "Шинэ багц"}
+        </Link>
+
+        <div className={`mt-auto rounded-2xl border border-white/70 bg-white/65 shadow-[0_12px_32px_rgba(39,53,82,.07)] backdrop-blur-xl ${collapsed ? "p-1.5" : "p-2"}`}>
+          {status === "loading" ? (
+            <div className="flex items-center gap-3 p-2">
+              <span className="skeleton-pulse h-9 w-9 shrink-0 rounded-xl bg-[#e9eaf0]" />
+              {!collapsed && <span className="skeleton-pulse h-3 flex-1 rounded bg-[#e9eaf0]" />}
+            </div>
+          ) : session ? (
+            <>
+              <Link
+                href="/profile"
+                title={collapsed ? (session.user?.name || "Профайл") : undefined}
+                className={`flex items-center gap-3 rounded-xl p-2 transition hover:bg-white ${collapsed ? "justify-center" : ""}`}
+              >
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#fff1c7] text-xs font-bold text-[#84530f]">{initials}</span>
+                {!collapsed && (
+                  <>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-xs font-bold">{session?.user?.name || "Профайл"}</span>
+                      <span className="block truncate text-[10px] text-[var(--text-muted)]">{session?.user?.email}</span>
+                    </span>
+                    <UserRound className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
+                  </>
+                )}
+              </Link>
+              <button
+                onClick={() => signOut({ callbackUrl: "/" })}
+                title={collapsed ? "Гарах" : undefined}
+                className={`nav-utility ${collapsed ? "justify-center" : ""}`}
+              >
+                <LogOut className="h-4 w-4 shrink-0" />
+                {!collapsed && "Гарах"}
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/auth/signin"
+              title={collapsed ? "Нэвтрэх" : undefined}
+              className={`flex items-center gap-3 rounded-xl p-2.5 transition hover:bg-white ${collapsed ? "justify-center" : ""}`}
+            >
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#fff1c7] text-[#84530f]"><UserRound className="h-4 w-4" /></span>
+              {!collapsed && <span className="text-xs font-bold">Нэвтрэх</span>}
+            </Link>
+          )}
+        </div>
+      </aside>
+
+      <header className="mobile-topbar">
+        <Link href="/dashboard">
+          <BrandLogo markClassName="h-8 w-8" />
+        </Link>
+        <Link href="/deck/create" className="btn-primary px-3 py-2 text-xs">
+          <Plus className="h-4 w-4" aria-hidden="true" /> Шинэ багц
+        </Link>
+      </header>
+    </>
   );
 }

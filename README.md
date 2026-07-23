@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nudleye
 
-## Getting Started
+Nudleye is a modern flashcard learning app for creating vocabulary decks, reviewing words, and building a simple daily learning habit.
 
-First, run the development server:
+Users can create their own word sets, add cards manually or in bulk, review them through an interactive flashcard flow, and copy shared decks into their own library.
+
+## Live Demo
+
+https://nudleye.vercel.app/
+
+## Features
+
+- Create and manage custom vocabulary decks
+- Add word pairs manually or with bulk entry
+- Review words with an interactive flashcard flow
+- Practice through daily review sessions
+- Copy shared decks into your own library
+- Track learning progress and mastered words
+- Credentials authentication with optional Google sign-in
+- Responsive UI for desktop and mobile
+
+## Tech Stack
+
+- Next.js 15 App Router
+- React 19
+- TypeScript
+- Prisma ORM
+- PostgreSQL in production
+- NextAuth
+- Tailwind CSS 4
+- TanStack Query
+- Radix UI
+- Framer Motion
+
+## Local Setup
+
+Install dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Copy `.env.example` to `.env` and add the required database and authentication values.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Then initialize the database and start the development server:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+pnpm db:migrate:deploy
+pnpm dev
+```
 
-## Learn More
+## Environment Variables
 
-To learn more about Next.js, take a look at the following resources:
+```text
+DATABASE_URL
+DATABASE_URL_UNPOOLED
+NEXTAUTH_SECRET
+NEXTAUTH_URL
+GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Google authentication is optional. If Google OAuth values are not provided, credentials login can still be used.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Vercel and Neon Deployment
 
-## Deploy on Vercel
+Create a Neon project, preferably in the Singapore region when available.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Use Neon's pooled connection for `DATABASE_URL` and direct connection for `DATABASE_URL_UNPOOLED`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Set `NEXTAUTH_URL` to the final HTTPS deployment URL.
+
+Vercel runs:
+
+```bash
+pnpm vercel-build
+```
+
+This command generates Prisma Client, applies pending migrations, and builds the Next.js application.
+
+## Verification
+
+Run a production build locally:
+
+```bash
+pnpm build
+```
+
+## Project Summary
+
+Nudleye was built as a full-stack vocabulary learning project focused on flashcard-based review, daily practice, shared decks, authentication, and responsive user experience.
+
+The main goal of the project is to turn word memorization into a simple repeatable habit: see, remember, review.

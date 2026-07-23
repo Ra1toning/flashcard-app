@@ -1,34 +1,64 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import AuthProvider from "../components/AuthProvider";
+import type { Metadata, Viewport } from "next";
+import { Manrope, Unbounded } from "next/font/google";
+import AppProviders from "@/components/AppProviders";
+import PersistentNavBar from "@/components/NavBar";
+import BottomNav from "@/components/BottomNav";
+import AmbientBackdrop from "@/components/ui/AmbientBackdrop";
+import RouteTransition from "@/components/ui/RouteTransition";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const manrope = Manrope({
+  variable: "--font-manrope",
+  subsets: ["cyrillic", "latin"],
+  display: "swap",
 });
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const unbounded = Unbounded({
+  variable: "--font-unbounded",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "FlashDemo - Korean Language Learning",
-  description: "Learn Korean with spaced repetition flashcards",
+  metadataBase: new URL(process.env.NEXTAUTH_URL || "https://nudleye.vercel.app"),
+  title: {
+    default: "Nudleye - Хар, тогтоо, давт",
+    template: "%s | Nudleye",
+  },
+  description: "Үгээ илүү амархан тогтоож, flashcard ашиглан өдөр бүр давтаарай.",
+  applicationName: "Nudleye",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
+  openGraph: {
+    title: "Nudleye - Хар, тогтоо, давт",
+    description: "Үгээ илүү амархан тогтоож, flashcard ашиглан өдөр бүр давтаарай.",
+    images: [{ url: "/logo.png", width: 600, height: 600, alt: "Nudleye" }],
+  },
+  twitter: {
+    card: "summary",
+    title: "Nudleye - Хар, тогтоо, давт",
+    description: "Үгээ илүү амархан тогтоож, flashcard ашиглан өдөр бүр давтаарай.",
+    images: ["/logo.png"],
+  },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export const viewport: Viewport = {
+  themeColor: "#f5f0e6",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <AuthProvider>{children}</AuthProvider>
+    <html lang="mn">
+      <body className={`${manrope.variable} ${unbounded.variable} antialiased`}>
+        <AppProviders>
+          <AmbientBackdrop />
+          <PersistentNavBar />
+          <main className="relative z-10 min-h-screen"><RouteTransition>{children}</RouteTransition></main>
+          <BottomNav />
+        </AppProviders>
       </body>
     </html>
   );

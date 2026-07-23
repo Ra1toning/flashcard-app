@@ -1,59 +1,68 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { prisma } from "../../../../lib/prisma";
+import { sendEmail, passwordResetEmail, isEmailConfigured } from "@/lib/email";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import crypto from "crypto";
+
+const GENERIC_MESSAGE = "Хэрэв и-мэйл бүртгэлтэй бол сэргээх холбоос илгээгдсэн.";
 
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json();
-
-    if (!email) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    const ip = getClientIp(req.headers);
+    const limit = rateLimit(`forgot-password:${ip}`, 3, 10 * 60 * 1000);
+    if (!limit.success) {
+      return NextResponse.json(
+        { error: "Хэт олон оролдлого. Түр хүлээгээд дахин оролдоно уу." },
+        { status: 429 }
+      );
     }
 
-    // Check if user exists
+    const { email } = await req.json();
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+
+    if (!normalizedEmail) {
+      return NextResponse.json({ error: "И-мэйл шаардлагатай." }, { status: 400 });
+    }
+
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
-    if (!user) {
-      // Don't reveal that user doesn't exist for security
-      return NextResponse.json({
-        message:
-          "If an account with that email exists, we've sent a password reset link.",
-      });
+    if (!user || !user.password) {
+      return NextResponse.json({ message: GENERIC_MESSAGE });
     }
 
-    // Generate reset token
     const resetToken = crypto.randomBytes(32).toString("hex");
-    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+    const resetTokenExpiry = new Date(Date.now() + 3600000);
 
-    // Save reset token to database
+    await prisma.verificationToken.deleteMany({
+      where: { identifier: normalizedEmail },
+    });
     await prisma.verificationToken.create({
       data: {
-        identifier: email,
+        identifier: normalizedEmail,
         token: resetToken,
         expires: resetTokenExpiry,
       },
     });
 
-    // In a real app, you'd send an email here
-    // For now, we'll just log it (in production, remove this!)
-    console.log(`Password reset link for ${email}:`);
-    console.log(
-      `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${resetToken}`
-    );
+    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const resetUrl = `${baseUrl}/auth/reset-password?token=${resetToken}`;
 
-    // TODO: Send actual email
-    // await sendPasswordResetEmail(email, resetToken);
+    const { subject, html, text } = passwordResetEmail(resetUrl);
 
-    return NextResponse.json({
-      message:
-        "If an account with that email exists, we've sent a password reset link.",
+    after(async () => {
+      const sent = await sendEmail({ to: normalizedEmail, subject, html, text });
+      if (!sent && !isEmailConfigured()) {
+        console.info(`[dev] Password reset link: ${resetUrl}`);
+      }
     });
+
+    return NextResponse.json({ message: GENERIC_MESSAGE });
   } catch (error) {
-    console.error("Password reset error:", error);
+    console.error("Нууц үгийг сэргээхэд алдаа:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Сэргээх хүсэлтийг боловсруулж чадсангүй." },
       { status: 500 }
     );
   }

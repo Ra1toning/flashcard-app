@@ -1,9 +1,7 @@
 import { withAuth } from "next-auth/middleware";
 
 export default withAuth(
-  function middleware(req) {
-    // Add any additional middleware logic here
-  },
+  function middleware() {},
   {
     callbacks: {
       authorized: ({ token }) => !!token,
@@ -11,13 +9,14 @@ export default withAuth(
   }
 );
 
-// Protect these routes
 export const config = {
   matcher: [
+    "/dashboard/:path*",
+    "/library/:path*",
     "/review/:path*",
-    "/create/:path*",
+    "/test/:path*",
+    "/deck/create",
+    "/deck/:id/edit",
     "/profile/:path*",
-    "/api/decks/:path*",
-    "/api/review/:path*",
   ],
 };

@@ -1,30 +1,37 @@
-// /components/BottomNav.tsx
-'use client';
-import React from 'react';
-import { Home, Library, Compass, User } from 'lucide-react';
+"use client";
 
-type Props = {
-  activeTab: string;
-  setActiveTab: (t: string) => void;
-};
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Compass, LayoutDashboard, User } from "lucide-react";
 
-export default function BottomNav({ activeTab, setActiveTab }: Props) {
-  const items = [
-    { id: 'home', icon: Home, label: 'Нүүр' },
-    { id: 'library', icon: Library, label: 'Сан' },
-    { id: 'discover', icon: Compass, label: 'Олох' },
-    { id: 'profile', icon: User, label: 'Би' },
-  ];
+const items = [
+  { label: "Өнөөдөр", path: "/dashboard", icon: LayoutDashboard },
+  { label: "Хуваалцсан", path: "/discover", icon: Compass },
+  { label: "Профайл", path: "/profile", icon: User },
+];
+
+export default function BottomNav() {
+  const pathname = usePathname();
+  if (pathname === "/" || pathname.startsWith("/auth/")) return null;
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0A0A0A]/95 backdrop-blur-xl border-t border-white/10 z-50">
-      <div className="grid grid-cols-4 h-16">
-        {items.map((tab) => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex flex-col items-center justify-center gap-1 transition-all ${activeTab === tab.id ? 'text-white' : 'text-white/40'}`} aria-current={activeTab === tab.id}>
-            <tab.icon className={`w-5 h-5 ${activeTab === tab.id ? 'scale-110' : ''} transition-transform`} />
-            <span className="text-xs">{tab.label}</span>
-          </button>
-        ))}
+    <nav className="fixed inset-x-3 bottom-3 z-50 rounded-2xl border border-white/80 bg-white/85 p-1.5 shadow-[0_16px_45px_rgba(31,42,68,.16)] backdrop-blur-2xl lg:hidden">
+      <div className="grid grid-cols-3 gap-1">
+        {items.map(({ label, path, icon: Icon }) => {
+          const active = pathname === path || pathname.startsWith(`${path}/`);
+          return (
+            <Link
+              key={path}
+              href={path}
+              className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-center text-[10px] font-semibold transition ${
+                active ? "bg-[#fff1c7] text-[#84530f] shadow-sm" : "text-[#777168] hover:bg-white"
+              }`}
+            >
+              <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+              {label}
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );

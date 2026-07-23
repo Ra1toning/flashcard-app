@@ -1,16 +1,19 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
-// NextAuth.js required models
+enum Role {
+  USER
+  ADMIN
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -28,6 +31,7 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -36,23 +40,32 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  // Relations
-  accounts Account[]
-  sessions Session[]
-  decks    Deck[]
-  progress UserProgress[]
+  id             String    @id @default(cuid())
+  name           String?
+  email          String    @unique
+  emailVerified  DateTime?
+  image          String?
+  password       String?
+  role           Role      @default(USER)
+  learningReason String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  accounts          Account[]
+  sessions          Session[]
+  decks             Deck[]
+  progress          UserProgress[]
+  testSessions      TestSession[]
+  ratings           Rating[]
+  events            Event[]
+  pushSubscriptions PushSubscription[]
+
+  @@index([email])
 }
 
 model VerificationToken {
@@ -63,7 +76,6 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// App-specific models
 model Deck {
   id          String   @id @default(cuid())
   name        String
@@ -73,30 +85,98 @@ model Deck {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
-  // Relations
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
   cards    Card[]
   progress UserProgress[]
+  ratings  Rating[]
+
+  copiedFromId String?
+  copiedFrom   Deck?   @relation("DeckCopies", fields: [copiedFromId], references: [id], onDelete: SetNull)
+  copies       Deck[]  @relation("DeckCopies")
+
+  @@index([authorId])
+  @@index([isPublic])
+  @@index([createdAt])
+  @@index([copiedFromId])
+}
+
+model Rating {
+  id        String   @id @default(cuid())
+  userId    String
+  deckId    String
+  value     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deck Deck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deckId])
+  @@index([deckId])
+  @@index([userId])
+}
+
+model Report {
+  id         String   @id @default(cuid())
+  targetType String
+  targetId   String
+  deckId     String?
+  reporterId String?
+  category   String
+  detail     String?
+  status     String   @default("open")
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId])
+  @@index([status])
 }
 
 model Card {
   id        String   @id @default(cuid())
-  front     String   // Korean text
-  back      String   // Mongolian text
+  front     String
+  back      String
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  // Relations
   deckId String
   deck   Deck   @relation(fields: [deckId], references: [id], onDelete: Cascade)
   
-  // SRS fields
-  easeFactor Float   @default(2.5)
-  interval   Int     @default(1)
-  repetition Int     @default(0)
+  easeFactor Float    @default(2.5)
+  interval   Int      @default(1)
+  repetition Int      @default(0)
+  introduced Boolean  @default(false)
   dueDate    DateTime @default(now())
+
+  @@index([deckId])
+  @@index([dueDate])
+}
+
+model Event {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([type, createdAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model UserProgress {
@@ -114,4 +194,29 @@ model UserProgress {
   deck Deck @relation(fields: [deckId], references: [id], onDelete: Cascade)
   
   @@unique([userId, deckId])
+  @@index([userId])
+  @@index([deckId])
+}
+
+model TestSession {
+  id          String   @id @default(cuid())
+  userId      String
+  deckId      String?
+  sessionType String   @default("practice")
+  totalCards  Int      @default(0)
+  completed   Int      @default(0)
+  correct     Int      @default(0)
+  incorrect   Int      @default(0)
+  score       Float    @default(0)
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([deckId])
+  @@index([sessionType])
+  @@index([completedAt])
 }
