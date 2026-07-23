@@ -20,6 +20,20 @@ function gradeLabel(grade: Grade) {
   return GRADE_OPTIONS.find((option) => option.value === grade)?.label ?? grade;
 }
 
+function buildGradedQueue(justExposed: ReviewCard[], due: ReviewCard[]): ReviewCard[] {
+  const combined = [...due, ...justExposed];
+  for (let i = combined.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [combined[i], combined[j]] = [combined[j], combined[i]];
+  }
+  const exposedIds = new Set(justExposed.map((c) => c.id));
+  if (combined.length > 1 && exposedIds.has(combined[0].id)) {
+    const swapIndex = combined.findIndex((c, idx) => idx > 0 && !exposedIds.has(c.id));
+    if (swapIndex > 0) [combined[0], combined[swapIndex]] = [combined[swapIndex], combined[0]];
+  }
+  return combined;
+}
+
 export default function DailyReviewSession({
   cards,
   exposureCards = [],
@@ -34,6 +48,8 @@ export default function DailyReviewSession({
   const [exposureIndex, setExposureIndex] = useState(0);
   const [exposedCount, setExposedCount] = useState(0);
   const [phaseIntro, setPhaseIntro] = useState(false);
+  const [gradedQueue, setGradedQueue] = useState<ReviewCard[]>(cards);
+  const [justExposedCount, setJustExposedCount] = useState(0);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [results, setResults] = useState<Result[]>([]);
@@ -48,7 +64,7 @@ export default function DailyReviewSession({
 
   const total = exposureCards.length + cards.length;
   const inExposure = exposureIndex < exposureCards.length;
-  const current = inExposure ? exposureCards[exposureIndex] : cards[index];
+  const current = inExposure ? exposureCards[exposureIndex] : gradedQueue[index];
 
   function flashToast(message: string) {
     setToast(message);
@@ -116,8 +132,9 @@ export default function DailyReviewSession({
       setExposureIndex((currentIndex) => currentIndex + 1);
       setFlipped(false);
       if (wasLast) {
-        if (cards.length === 0) void finish(results, nextExposed);
-        else setPhaseIntro(true);
+        setJustExposedCount(exposureCards.length);
+        setGradedQueue(buildGradedQueue(exposureCards, cards));
+        setPhaseIntro(true);
       }
     },
   });
@@ -137,7 +154,7 @@ export default function DailyReviewSession({
       const result: Result = { cardId: card.id, front: card.front, back: card.back, grade, correct: GRADE_PAYLOAD[grade].correct };
       const nextResults = [...results, result];
       setResults(nextResults);
-      if (index >= cards.length - 1) {
+      if (index >= gradedQueue.length - 1) {
         void finish(nextResults, exposedCount);
       } else {
         setIndex((currentIndex) => currentIndex + 1);
@@ -299,8 +316,8 @@ export default function DailyReviewSession({
             <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#e8f5ee] text-2xl">👍</div>
             <h1 className="mt-5 text-2xl font-bold">{exposedCount} шинэ үгтэй танилцлаа</h1>
             <p className="mt-2 text-sm leading-6 text-[#676b78]">
-              Одоо давталт — өмнө үзсэн {cards.length} үгээ санаж байгаа эсэхээ шалгаарай.
-              Үгийг хараад утгыг нь санахыг хичээгээд, эргүүлж шалгаарай.
+              Одоо саяхан үзсэн үгсээ шалгацгаая — санаж байгаа эсэхээ өөрөө үнэлээрэй.
+              {cards.length > 0 && ` Өмнөх ${cards.length} үгтэй хамт нийт ${gradedQueue.length} карт.`}
             </p>
             <button onClick={() => setPhaseIntro(false)} className="btn-primary mt-6 px-5 py-3 text-sm">
               Шалгалт эхлүүлэх <ArrowRight className="h-4 w-4" />
@@ -326,7 +343,7 @@ export default function DailyReviewSession({
               <span>
                 {inExposure
                   ? `Шинэ үг · ${exposureIndex + 1} / ${exposureCards.length}`
-                  : `Давталт · ${index + 1} / ${cards.length}`}
+                  : `Давталт · ${index + 1} / ${gradedQueue.length}`}
               </span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-[#e6dfd3]"><motion.div className="h-full rounded-full bg-[#b7791f]" animate={{ width: `${progress}%` }} transition={{ duration: .2 }} /></div>
@@ -356,7 +373,7 @@ export default function DailyReviewSession({
                 <span>
                   {inExposure
                     ? `${exposureIndex + 1} / ${exposureCards.length}`
-                    : `${index + 1} / ${cards.length}`}
+                    : `${index + 1} / ${gradedQueue.length}`}
                 </span>
               </div>
               <div className="grid min-h-[270px] place-items-center px-6 py-10">
@@ -390,7 +407,7 @@ export default function DailyReviewSession({
                 >
                   {introduceMutation.isPending ? "..." : "Ойлголоо"}
                 </button>
-                <p className="mt-2 text-center text-xs text-[#818591]">Энэ үг маргаашийн давталтад орж ирнэ</p>
+                <p className="mt-2 text-center text-xs text-[#818591]">Дараа шатанд дахин давтаж, тогтоосон эсэхийг баталгаажуулна.</p>
               </div>
             ) : (
               <GradeButtons onGrade={handleGrade} disabled={gradeMutation.isPending} pendingGrade={pendingGrade} />
