@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { computeStreak } from "@/lib/streak";
 
 function utcDayKey(date: Date) {
   return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
@@ -48,21 +49,9 @@ export async function GET() {
       mastered += deck.cards.filter(c => c.interval >= 21).length;
     }
 
-    const oneDay = 24 * 60 * 60 * 1000;
     const todayKey = utcDayKey(new Date());
-    let streak = 0;
-    const testDates = [...new Set(user.testSessions.map((s) => utcDayKey(s.createdAt)))]
-      .sort((a, b) => b - a);
-    let checkDate = testDates[0] === todayKey ? todayKey : todayKey - oneDay;
-
-    for (const testDate of testDates) {
-      if (testDate === checkDate) {
-        streak++;
-        checkDate -= oneDay;
-      } else if (testDate < checkDate) {
-        break;
-      }
-    }
+    const testDates = user.testSessions.map((s) => utcDayKey(s.createdAt));
+    const streak = computeStreak(testDates, todayKey);
 
     const recentTests = user.testSessions.slice(0, 10);
     let totalCorrect = 0;

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logEvent } from "@/lib/analytics";
 
 type RouteContext = {
   params: Promise<{
@@ -100,7 +101,7 @@ export async function GET(req: Request, context: RouteContext) {
         id: card.id,
         korean: card.front,
         mongolian: card.back,
-        mastered: card.easeFactor >= 2.5 && card.interval >= 21,
+        mastered: card.interval >= 21,
         dueDate: card.dueDate.toISOString(),
         easeFactor: card.easeFactor,
         interval: card.interval,
@@ -157,9 +158,9 @@ export async function PATCH(req: Request, context: RouteContext) {
     if (description.length > 300) {
       return NextResponse.json({ error: "Тайлбар 300 тэмдэгтээс урт байж болохгүй." }, { status: 400 });
     }
-    if (cards && (cards.length > 500 || cards.some((card) => !card.korean || !card.mongolian))) {
+    if (cards && (cards.length > 500 || cards.some((card) => !card.korean || !card.mongolian || card.korean.length > 200 || card.mongolian.length > 200))) {
       return NextResponse.json(
-        { error: "Карт бүрийн хоёр талыг бөглөж, нэг багцад 500 хүртэл карт оруулна уу." },
+        { error: "Карт бүрийн хоёр талыг 200 тэмдэгт хүртэл бөглөж, нэг багцад 500 хүртэл карт оруулна уу." },
         { status: 400 }
       );
     }
@@ -230,14 +231,17 @@ export async function PATCH(req: Request, context: RouteContext) {
         );
 
         for (const card of cardsToUpdate) {
+          const original = deck.cards.find((existing) => existing.id === card.id);
+          const contentChanged = original && (original.front !== card.korean || original.back !== card.mongolian);
           await tx.card.update({
             where: { id: card.id },
-            data: {
-              front: card.korean,
-              back: card.mongolian,
-            },
+            data: contentChanged
+              ? { front: card.korean, back: card.mongolian, easeFactor: 2.5, interval: 1, repetition: 0, dueDate: new Date() }
+              : { front: card.korean, back: card.mongolian },
           });
         }
+
+        const mastered = await tx.card.count({ where: { deckId, interval: { gte: 21 } } });
 
         await tx.userProgress.upsert({
           where: {
@@ -249,17 +253,21 @@ export async function PATCH(req: Request, context: RouteContext) {
           create: {
             userId: session.user.id,
             deckId,
-            mastered: 0,
+            mastered,
             total: cards.length,
             streak: 0,
           },
           update: {
             total: cards.length,
-            mastered: Math.min(deck.progress[0]?.mastered ?? 0, cards.length),
+            mastered,
           },
         });
       }
     });
+
+    if (!deck.isPublic && body.isPublic === true) {
+      await logEvent(session.user.id, "deck_published", { deckId });
+    }
 
     const updatedDeck = await prisma.deck.findUnique({
       where: { id: deckId },

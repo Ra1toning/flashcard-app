@@ -40,7 +40,13 @@ export function getClientIp(headers: Headers | Record<string, string | string[] 
     return Array.isArray(value) ? value[0] : value;
   };
 
+  const realIp = get("x-real-ip");
+  if (realIp) return realIp.trim();
+
   const forwarded = get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return get("x-real-ip") ?? "unknown";
+  if (forwarded) {
+    const hops = forwarded.split(",").map((hop) => hop.trim()).filter(Boolean);
+    return hops[hops.length - 1] ?? "unknown";
+  }
+  return "unknown";
 }

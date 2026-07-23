@@ -4,10 +4,9 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import * as Dialog from "@radix-ui/react-dialog";
-import * as Tabs from "@radix-ui/react-tabs";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Flag, Search, Star, X } from "lucide-react";
+import { ArrowRight, ArrowUpDown, Flag, Search, Star, X } from "lucide-react";
 import { MotionItem, PageMotion } from "@/components/ui/Motion";
 import { DiscoverSkeleton } from "@/components/ui/Skeletons";
 import { fetchJson } from "@/lib/http";
@@ -30,13 +29,17 @@ type PublicDeck = {
 };
 type PublicDeckDetail = {
   id: string;
+  isOwner?: boolean;
+  rating?: { average: number; count: number; mine: number };
   wordsList: Array<{
     id: string;
     korean: string;
     mongolian: string;
   }>;
 };
-type Filter = "all" | "trending" | "popular" | "new";
+type Filter = "all" | "rating" | "popular" | "new";
+
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default function DiscoverPage() {
   const queryClient = useQueryClient();
@@ -96,6 +99,21 @@ export default function DiscoverPage() {
     },
     onError: (error) => setReportError(error instanceof Error ? error.message : "Мэдээллийг илгээж чадсангүй."),
   });
+  const rateMutation = useMutation({
+    mutationFn: ({ deckId, value }: { deckId: string; value: number }) => fetchJson<{ rating: { average: number; count: number; mine: number } }>(`/api/decks/${deckId}/rate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value }),
+    }),
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData<PublicDeckDetail | undefined>(["deck", variables.deckId], (old) =>
+        old ? { ...old, rating: data.rating } : old
+      );
+      queryClient.invalidateQueries({ queryKey: ["discover"] });
+      showNotice("Үнэлгээ хадгаллаа. Баярлалаа!");
+    },
+    onError: (error) => showNotice(error instanceof Error ? error.message : "Үнэлгээг хадгалж чадсангүй."),
+  });
 
   function saveDeck(deckId: string) {
     if (status !== "authenticated") {
@@ -103,6 +121,15 @@ export default function DiscoverPage() {
       return;
     }
     addMutation.mutate(deckId);
+  }
+
+  function rateDeck(value: number) {
+    if (status !== "authenticated") {
+      router.push("/auth/signin");
+      return;
+    }
+    if (!selected) return;
+    rateMutation.mutate({ deckId: selected.id, value });
   }
 
   const decks = decksQuery.data?.decks ?? [];
@@ -135,31 +162,31 @@ export default function DiscoverPage() {
         </MotionItem>
 
         <MotionItem>
-          <Tabs.Root value={filter} onValueChange={(value) => setFilter(value as Filter)}>
-            <div className="mb-5 flex flex-col gap-2 rounded-[20px] border border-white/80 bg-white/72 p-2 shadow-[0_12px_34px_rgba(32,43,70,.07)] backdrop-blur-xl lg:flex-row">
-              <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8c919d]" aria-hidden="true" />
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  className="h-10 w-full rounded-xl bg-[#f7f8fa] pl-10 pr-4 text-sm outline-none transition placeholder:text-[#999da7] hover:bg-[#f3f5f8] focus:bg-white focus:ring-2 focus:ring-[#cbd8fa]"
-                  placeholder="Багц эсвэл зохиогч хайх..."
-                />
-              </div>
-              <Tabs.List className="grid grid-cols-4 rounded-xl bg-[#f0f1f4] p-1 lg:flex">
-                {([
-                  ["all", "Бүгд"],
-                  ["trending", "Идэвхтэй"],
-                  ["popular", "Алдартай"],
-                  ["new", "Шинэ"],
-                ] as const).map(([value, label]) => (
-                  <Tabs.Trigger key={value} value={value} className="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold text-[#777168] transition hover:text-[#302b24] data-[state=active]:bg-white data-[state=active]:text-[#84530f] data-[state=active]:shadow-sm">
-                    {label}
-                  </Tabs.Trigger>
-                ))}
-              </Tabs.List>
+          <div className="mb-5 flex flex-col gap-2 rounded-[20px] border border-white/80 bg-white/72 p-2 shadow-[0_12px_34px_rgba(32,43,70,.07)] backdrop-blur-xl sm:flex-row">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8c919d]" aria-hidden="true" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                className="h-10 w-full rounded-xl bg-[#f7f8fa] pl-10 pr-4 text-sm outline-none transition placeholder:text-[#999da7] hover:bg-[#f3f5f8] focus:bg-white focus:ring-2 focus:ring-[#cbd8fa]"
+                placeholder="Багц эсвэл зохиогч хайх..."
+              />
             </div>
-          </Tabs.Root>
+            <div className="relative flex items-center gap-2 rounded-xl bg-[#f0f1f4] px-3">
+              <ArrowUpDown className="h-3.5 w-3.5 shrink-0 text-[#777168]" aria-hidden="true" />
+              <select
+                value={filter}
+                onChange={(event) => setFilter(event.target.value as Filter)}
+                aria-label="Эрэмбэлэх"
+                className="h-10 cursor-pointer bg-transparent pr-1 text-xs font-bold text-[#777168] outline-none"
+              >
+                <option value="all">Бүгд</option>
+                <option value="rating">Үнэлгээ өндөр</option>
+                <option value="popular">Алдартай</option>
+                <option value="new">Шинэ</option>
+              </select>
+            </div>
+          </div>
         </MotionItem>
 
         <MotionItem>
@@ -189,8 +216,10 @@ export default function DiscoverPage() {
                           <Star className="h-3 w-3 fill-[#e6a52c] text-[#e6a52c]" />
                           {deck.rating.average.toFixed(1)} ({deck.rating.count})
                         </span>
-                      ) : (
+                      ) : Date.now() - new Date(deck.createdAt).getTime() < SEVEN_DAYS_MS ? (
                         <span className="shrink-0 text-[#a9adb8]">Шинэ</span>
+                      ) : (
+                        <span className="shrink-0 text-[#c3c6cf]">Үнэлгээгүй</span>
                       )}
                     </div>
 
@@ -285,12 +314,26 @@ export default function DiscoverPage() {
 
               <div className="flex flex-col gap-3 border-t border-[#e6e8ec] bg-[#fafbfc] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                 <div className="flex items-center gap-4">
-                  {selected.rating.count > 0 && (
+                  {detailQuery.data && !detailQuery.data.isOwner ? (
+                    <div className="flex items-center gap-2">
+                      <StarRating
+                        value={detailQuery.data.rating?.mine ?? 0}
+                        onRate={rateDeck}
+                        disabled={rateMutation.isPending}
+                        size={20}
+                      />
+                      {(detailQuery.data.rating?.count ?? 0) > 0 && (
+                        <span className="text-xs text-[#7e828e]">
+                          {detailQuery.data.rating!.average.toFixed(1)} ({detailQuery.data.rating!.count})
+                        </span>
+                      )}
+                    </div>
+                  ) : selected.rating.count > 0 ? (
                     <span className="inline-flex items-center gap-1.5 text-xs text-[#7e828e]">
                       <StarRating value={Math.round(selected.rating.average)} readOnly size={14} />
                       {selected.rating.average.toFixed(1)} ({selected.rating.count})
                     </span>
-                  )}
+                  ) : null}
                   <button onClick={() => { setReportError(""); setReportTarget(selected.id); }} className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-[#858995] transition hover:text-[#a84040]">
                     <Flag className="h-3.5 w-3.5" />Мэдэгдэх
                   </button>

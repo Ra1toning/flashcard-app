@@ -13,7 +13,7 @@ import type { Deck } from "@/types";
 import DecorativeLayer from "@/components/ui/DecorativeLayer";
 
 type DailyData = {
-  stats: { overdue: number; today: number; upcoming: number; total: number };
+  stats: { overdue: number; today: number; total: number };
   recommendation: string;
   streak: number;
   cards?: Array<{ front: string; back: string }>;
@@ -41,7 +41,7 @@ export default function DashboardPage() {
 
   const decks = decksQuery.data?.myDecks ?? [];
   const daily = dailyQuery.data ?? {
-    stats: { overdue: 0, today: 0, upcoming: 0, total: 0 },
+    stats: { overdue: 0, today: 0, total: 0 },
     recommendation: "Өнөөдрийн даалгавар бэлэн байна.",
     streak: 0,
   };
@@ -85,13 +85,20 @@ export default function DashboardPage() {
                 </h2>
                 <p className="mt-2 max-w-xl text-sm leading-6 text-[#596175]">{daily.recommendation}</p>
                 <div className="mt-5 flex flex-wrap items-center gap-4">
-                  <Link href="/test/daily" className="btn-primary px-4 py-2.5 text-sm">
+                  <Link href="/test/daily?start=1" className="btn-primary px-4 py-2.5 text-sm">
                     Давталт эхлүүлэх <ArrowRight className="h-4 w-4" />
                   </Link>
                   <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${
                     daily.streak === 0 ? "bg-[#f1f2f5] text-[#777985]" : streakAtRisk ? "bg-[#fff0d6] text-[#9a6418]" : "bg-[#fde8d0] text-[#c2560a]"
                   }`}>
-                    <Flame className={`h-3.5 w-3.5 ${daily.streak > 0 ? "fill-current" : ""}`} />
+                    <motion.span
+                      initial={{ scale: 0.4 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 320, damping: 14, delay: .15 }}
+                      className="inline-flex"
+                    >
+                      <Flame className={`h-3.5 w-3.5 ${daily.streak > 0 ? "fill-current" : ""}`} />
+                    </motion.span>
                     {daily.streak} өдөр дараалсан
                   </span>
                 </div>

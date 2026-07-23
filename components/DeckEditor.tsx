@@ -16,7 +16,7 @@ export default function DeckEditor({ deckId }: { deckId?: string }) {
   const queryClient = useQueryClient();
   const frontRef = useRef<HTMLInputElement>(null);
   const backRef = useRef<HTMLInputElement>(null);
-  const [form, setForm] = useState<FormData>({ name: "", description: "", emoji: "NU", isPublic: false });
+  const [form, setForm] = useState<FormData>({ name: "", description: "", emoji: "📚", isPublic: false });
   const [words, setWords] = useState<WordPair[]>([]);
   const [draft, setDraft] = useState({ korean: "", mongolian: "" });
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -31,6 +31,20 @@ export default function DeckEditor({ deckId }: { deckId?: string }) {
   }, [status, router]);
 
   useEffect(() => {
+    if (!dirty) return;
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [dirty]);
+
+  function goBack() {
+    if (dirty && !window.confirm("Хадгалаагүй өөрчлөлт байна. Гарах уу?")) return;
+    router.back();
+  }
+
+  useEffect(() => {
     if (!deckId || status !== "authenticated") return;
     fetch(`/api/decks/${deckId}`)
       .then(async (response) => {
@@ -42,7 +56,7 @@ export default function DeckEditor({ deckId }: { deckId?: string }) {
         setForm({
           name: data.name ?? "",
           description: data.description ?? "",
-          emoji: data.emoji || "NU",
+          emoji: data.emoji || "📚",
           isPublic: Boolean(data.isPublic),
         });
         setWords((data.wordsList ?? []).map((word: { id: string; korean: string; mongolian: string }) => ({
@@ -147,7 +161,7 @@ export default function DeckEditor({ deckId }: { deckId?: string }) {
       <main className="page-canvas max-w-6xl">
         <header className="sticky top-0 z-20 -mx-2 mb-6 flex items-center justify-between gap-4 rounded-b-2xl border-b border-white/80 bg-[#f7f9fd]/80 px-2 py-3 backdrop-blur-2xl lg:top-0">
           <div className="flex min-w-0 items-center gap-3">
-            <button onClick={() => router.back()} className="btn-ghost h-9 w-9 shrink-0 p-0" aria-label="Буцах">
+            <button onClick={goBack} className="btn-ghost h-9 w-9 shrink-0 p-0" aria-label="Буцах">
               <ArrowLeft className="h-4 w-4" />
             </button>
             <div className="min-w-0">
@@ -254,6 +268,7 @@ export default function DeckEditor({ deckId }: { deckId?: string }) {
                   }
                 }}
                 className="field"
+                maxLength={200}
                 placeholder="Үг, нэр томьёо эсвэл асуулт"
               />
             </div>
@@ -271,6 +286,7 @@ export default function DeckEditor({ deckId }: { deckId?: string }) {
                   }
                 }}
                 className="field"
+                maxLength={200}
                 placeholder="Утга, орчуулга эсвэл хариулт"
               />
             </div>

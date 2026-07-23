@@ -85,7 +85,7 @@ export async function POST(
     const updatedCard = await prisma.$transaction(async (tx) => {
       const updated = await tx.card.update({
         where: { id: cardId },
-        data: srsUpdate,
+        data: { ...srsUpdate, introduced: true },
       });
 
       const [total, mastered] = await Promise.all([

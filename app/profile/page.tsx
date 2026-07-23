@@ -33,10 +33,8 @@ export default function ProfilePage() {
 
   const stats = statsQuery.data ?? { totalWords: 0, mastered: 0, streak: 0, accuracy: 0 };
   const items = [
-    { label: "Нийт үг", value: stats.totalWords },
     { label: "Сурсан үг", value: stats.mastered },
     { label: "Өдөр дараалсан", value: stats.streak },
-    { label: "Зөв хариулт", value: `${stats.accuracy}%` },
   ];
 
   return (
@@ -63,7 +61,7 @@ export default function ProfilePage() {
           <section className="study-set-card p-6 shadow-[0_18px_45px_rgba(31,42,68,.08)]">
             <h2 className="font-bold">Таны ахиц</h2>
             {statsQuery.isPending ? (
-              <div className="mt-5 grid grid-cols-2 gap-3">{Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-20" />)}</div>
+              <div className="mt-5 grid grid-cols-2 gap-3">{Array.from({ length: 2 }).map((_, index) => <Skeleton key={index} className="h-20" />)}</div>
             ) : (
               <div className="mt-5 grid grid-cols-2 gap-3">
                 {items.map(({ label, value }) => (

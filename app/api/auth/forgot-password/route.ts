@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { sendEmail, passwordResetEmail, isEmailConfigured } from "@/lib/email";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
@@ -50,11 +50,13 @@ export async function POST(req: Request) {
     const resetUrl = `${baseUrl}/auth/reset-password?token=${resetToken}`;
 
     const { subject, html, text } = passwordResetEmail(resetUrl);
-    const sent = await sendEmail({ to: normalizedEmail, subject, html, text });
 
-    if (!sent && !isEmailConfigured()) {
-      console.info(`[dev] Password reset link: ${resetUrl}`);
-    }
+    after(async () => {
+      const sent = await sendEmail({ to: normalizedEmail, subject, html, text });
+      if (!sent && !isEmailConfigured()) {
+        console.info(`[dev] Password reset link: ${resetUrl}`);
+      }
+    });
 
     return NextResponse.json({ message: GENERIC_MESSAGE });
   } catch (error) {

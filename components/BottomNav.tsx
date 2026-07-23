@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, LayoutDashboard, Library, User } from "lucide-react";
+import { Compass, LayoutDashboard, User } from "lucide-react";
 
 const items = [
   { label: "Өнөөдөр", path: "/dashboard", icon: LayoutDashboard },
-  { label: "Өөрийн", path: "/library", icon: Library },
   { label: "Хуваалцсан", path: "/discover", icon: Compass },
   { label: "Профайл", path: "/profile", icon: User },
 ];
@@ -17,7 +16,7 @@ export default function BottomNav() {
 
   return (
     <nav className="fixed inset-x-3 bottom-3 z-50 rounded-2xl border border-white/80 bg-white/85 p-1.5 shadow-[0_16px_45px_rgba(31,42,68,.16)] backdrop-blur-2xl lg:hidden">
-      <div className="grid grid-cols-4 gap-1">
+      <div className="grid grid-cols-3 gap-1">
         {items.map(({ label, path, icon: Icon }) => {
           const active = pathname === path || pathname.startsWith(`${path}/`);
           return (

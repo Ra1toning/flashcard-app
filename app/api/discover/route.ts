@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 
-const TRENDING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
-
 const deckInclude = {
   author: { select: { name: true } },
   _count: { select: { cards: true, copies: true } },
@@ -44,33 +42,31 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const requestedFilter = searchParams.get("filter") || "all";
-    const filter = new Set(["all", "trending", "popular", "new"]).has(requestedFilter)
+    const filter = new Set(["all", "rating", "popular", "new"]).has(requestedFilter)
       ? requestedFilter
       : "all";
     const requestedLimit = Number.parseInt(searchParams.get("limit") || "20", 10);
     const limit = Number.isFinite(requestedLimit) ? Math.min(50, Math.max(1, requestedLimit)) : 20;
 
-    if (filter === "trending") {
-      const since = new Date(Date.now() - TRENDING_WINDOW_MS);
-      const grouped = await prisma.deck.groupBy({
-        by: ["copiedFromId"],
-        where: { copiedFromId: { not: null }, createdAt: { gte: since } },
-        _count: { copiedFromId: true },
-        orderBy: { _count: { copiedFromId: "desc" } },
+    if (filter === "rating") {
+      const grouped = await prisma.rating.groupBy({
+        by: ["deckId"],
+        where: { deck: { isPublic: true } },
+        _avg: { value: true },
+        _count: { value: true },
+        orderBy: { _avg: { value: "desc" } },
         take: limit,
       });
 
-      const orderById = new Map<string, number>();
-      grouped.forEach((row, index) => {
-        if (row.copiedFromId) orderById.set(row.copiedFromId, index);
-      });
-
-      if (orderById.size === 0) {
+      if (grouped.length === 0) {
         return NextResponse.json({ decks: [] });
       }
 
+      const orderById = new Map<string, number>();
+      grouped.forEach((row, index) => orderById.set(row.deckId, index));
+
       const rows = await prisma.deck.findMany({
-        where: { id: { in: [...orderById.keys()] }, isPublic: true },
+        where: { id: { in: [...orderById.keys()] } },
         include: deckInclude,
       });
       rows.sort((a, b) => (orderById.get(a.id) ?? 0) - (orderById.get(b.id) ?? 0));

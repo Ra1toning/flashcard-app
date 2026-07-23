@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { createStarterDeck } from "@/lib/starter-deck";
+import { logEvent } from "@/lib/analytics";
 import bcrypt from "bcryptjs";
+
+const LEARNING_REASONS = new Set(["topik", "work", "kcontent", "travel"]);
 
 export async function POST(req: Request) {
   try {
@@ -15,9 +18,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const { name, email, password } = await req.json();
+    const { name, email, password, learningReason } = await req.json();
     const normalizedName = typeof name === "string" ? name.trim() : "";
     const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    const normalizedReason =
+      typeof learningReason === "string" && LEARNING_REASONS.has(learningReason) ? learningReason : null;
 
     if (normalizedName.length < 2 || !normalizedEmail || typeof password !== "string") {
       return NextResponse.json(
@@ -51,6 +56,7 @@ export async function POST(req: Request) {
         name: normalizedName,
         email: normalizedEmail,
         password: hashedPassword,
+        learningReason: normalizedReason,
       },
     });
 
@@ -61,6 +67,8 @@ export async function POST(req: Request) {
     } catch (seedError) {
       console.error("Starter deck seed хийхэд алдаа:", seedError);
     }
+
+    await logEvent(user.id, "signup", { method: "credentials", reason: normalizedReason });
 
     return NextResponse.json(
       { message: "Хэрэглэгч амжилттай үүсгэгдсэн", user: userWithoutPassword },

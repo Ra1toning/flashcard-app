@@ -45,22 +45,25 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          Role      @default(USER)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  accounts     Account[]
-  sessions     Session[]
-  decks        Deck[]
-  progress     UserProgress[]
-  testSessions TestSession[]
-  ratings      Rating[]
+  id             String    @id @default(cuid())
+  name           String?
+  email          String    @unique
+  emailVerified  DateTime?
+  image          String?
+  password       String?
+  role           Role      @default(USER)
+  learningReason String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  accounts          Account[]
+  sessions          Session[]
+  decks             Deck[]
+  progress          UserProgress[]
+  testSessions      TestSession[]
+  ratings           Rating[]
+  events            Event[]
+  pushSubscriptions PushSubscription[]
 
   @@index([email])
 }
@@ -140,13 +143,40 @@ model Card {
   deckId String
   deck   Deck   @relation(fields: [deckId], references: [id], onDelete: Cascade)
   
-  easeFactor Float   @default(2.5)
-  interval   Int     @default(1)
-  repetition Int     @default(0)
+  easeFactor Float    @default(2.5)
+  interval   Int      @default(1)
+  repetition Int      @default(0)
+  introduced Boolean  @default(false)
   dueDate    DateTime @default(now())
 
   @@index([deckId])
   @@index([dueDate])
+}
+
+model Event {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([type, createdAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model UserProgress {

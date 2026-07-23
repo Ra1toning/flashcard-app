@@ -31,6 +31,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Энэ багцыг хуулах эрхгүй байна." }, { status: 403 });
     }
 
+    const existingCopy = await prisma.deck.findFirst({
+      where: { authorId: session.user.id, copiedFromId: originalDeck.id },
+      select: { id: true },
+    });
+
+    if (existingCopy) {
+      return NextResponse.json({ success: true, deckId: existingCopy.id, alreadySaved: true });
+    }
+
     const newDeck = await prisma.$transaction(async (tx) => {
       const createdDeck = await tx.deck.create({
         data: {

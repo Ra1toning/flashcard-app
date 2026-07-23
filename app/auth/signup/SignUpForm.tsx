@@ -8,9 +8,19 @@ import BrandLogo from "@/components/ui/BrandLogo";
 import DecorativeLayer from "@/components/ui/DecorativeLayer";
 import GoogleButton from "@/components/ui/GoogleButton";
 
+const REASONS = [
+  { value: "topik", label: "TOPIK шалгалт" },
+  { value: "work", label: "Ажил" },
+  { value: "kcontent", label: "K-контент" },
+  { value: "travel", label: "Аялал" },
+] as const;
+
+type Reason = (typeof REASONS)[number]["value"];
+
 export default function SignUpForm() {
   const router = useRouter();
   const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
+  const [reason, setReason] = useState<Reason | "">("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -26,7 +36,7 @@ export default function SignUpForm() {
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim().toLowerCase(), password: form.password }),
+        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim().toLowerCase(), password: form.password, learningReason: reason || null }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Бүртгэл үүсгэж чадсангүй.");
@@ -73,6 +83,24 @@ export default function SignUpForm() {
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && <div className="rounded-lg border border-rose-300/20 bg-rose-300/8 px-3 py-2.5 text-sm text-rose-200">{error}</div>}
+            <div>
+              <span className="label">Юуны төлөө сурч байна вэ?</span>
+              <div className="grid grid-cols-2 gap-2">
+                {REASONS.map(({ value, label }) => {
+                  const active = reason === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setReason(active ? "" : value)}
+                      className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition ${active ? "border-[#d4a451] bg-[#fff1c7] text-[#84530f] shadow-sm" : "border-[#ded7ca] bg-white/65 text-[#686158] hover:bg-white"}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {fields.map(({ key, label, type, autoComplete }) => (
                 <div key={key} className={key === "name" || key === "email" ? "sm:col-span-2" : ""}>

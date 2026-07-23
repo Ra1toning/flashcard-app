@@ -2,13 +2,12 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { utcStartOfDay } from "@/lib/date";
+import { computeStreak } from "@/lib/streak";
+import { logEventOnce, logStreakBroken } from "@/lib/analytics";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DAILY_CARD_LIMIT = 50;
-
-function utcStartOfDay(date: Date) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-}
 
 function statePriority(repetition: number, interval: number) {
   if (repetition === 0) return { state: "new" as const, priority: 3 };
@@ -33,12 +32,11 @@ export async function GET() {
 
     const today = utcStartOfDay(new Date());
     const tomorrow = new Date(today.getTime() + DAY_MS);
-    const horizon = new Date(today.getTime() + 8 * DAY_MS);
 
     const cards = await prisma.card.findMany({
       where: {
         deck: { authorId: session.user.id },
-        dueDate: { lt: horizon },
+        dueDate: { lt: tomorrow },
       },
       select: {
         id: true,
@@ -47,6 +45,7 @@ export async function GET() {
         easeFactor: true,
         interval: true,
         repetition: true,
+        introduced: true,
         dueDate: true,
         deckId: true,
       },
@@ -55,7 +54,6 @@ export async function GET() {
 
     let overdue = 0;
     let dueToday = 0;
-    let upcoming = 0;
 
     const rankedCards = cards.map((card) => {
       const dueDay = utcStartOfDay(card.dueDate);
@@ -63,8 +61,7 @@ export async function GET() {
       const dayOffset = Math.floor((dueDay.getTime() - today.getTime()) / DAY_MS);
 
       if (card.dueDate < today) overdue++;
-      else if (card.dueDate < tomorrow) dueToday++;
-      else upcoming++;
+      else dueToday++;
 
       return {
         ...card,
@@ -96,19 +93,19 @@ export async function GET() {
       ),
     ].sort((a, b) => b - a);
 
-    let streak = 0;
-    let expectedDay =
-      completedDays[0] === today.getTime()
-        ? today.getTime()
-        : today.getTime() - DAY_MS;
+    const streak = computeStreak(completedDays, today.getTime());
 
-    for (const completedDay of completedDays) {
-      if (completedDay === expectedDay) {
-        streak++;
-        expectedDay -= DAY_MS;
-      } else if (completedDay < expectedDay) {
-        break;
-      }
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { createdAt: true },
+    });
+    if (user) {
+      const daysSinceSignup = Math.floor((today.getTime() - utcStartOfDay(user.createdAt).getTime()) / DAY_MS);
+      if (daysSinceSignup === 1) await logEventOnce(session.user.id, "day1_return");
+      if (daysSinceSignup === 7) await logEventOnce(session.user.id, "day7_return");
+    }
+    if (streak === 0 && completedDays.length > 0) {
+      await logStreakBroken(session.user.id, completedDays[0]);
     }
 
     return NextResponse.json({
@@ -116,7 +113,6 @@ export async function GET() {
       stats: {
         overdue,
         today: dueToday,
-        upcoming,
         total: overdue + dueToday,
       },
       streak,

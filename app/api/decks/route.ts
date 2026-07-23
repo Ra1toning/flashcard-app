@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logEvent } from "@/lib/analytics";
 
 export async function POST(req: Request) {
   try {
@@ -34,9 +35,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Тайлбар 300 тэмдэгтээс урт байж болохгүй." }, { status: 400 });
     }
 
-    if (normalizedWords.length > 500 || normalizedWords.some((word) => !word.korean || !word.mongolian)) {
+    if (normalizedWords.length > 500 || normalizedWords.some((word) => !word.korean || !word.mongolian || word.korean.length > 200 || word.mongolian.length > 200)) {
       return NextResponse.json(
-        { error: "Карт бүрийн хоёр талыг бөглөж, нэг багцад 500 хүртэл карт оруулна уу." },
+        { error: "Карт бүрийн хоёр талыг 200 тэмдэгт хүртэл бөглөж, нэг багцад 500 хүртэл карт оруулна уу." },
         { status: 400 }
       );
     }
@@ -73,6 +74,9 @@ export async function POST(req: Request) {
         },
       });
 
+      await logEvent(session.user.id, "deck_created", { deckId: deck.id, cards: normalizedWords.length });
+      if (deck.isPublic) await logEvent(session.user.id, "deck_published", { deckId: deck.id });
+
       return NextResponse.json({
         id: deck.id,
         success: true,
@@ -97,6 +101,9 @@ export async function POST(req: Request) {
         },
       },
     });
+
+    await logEvent(session.user.id, "deck_created", { deckId: deck.id, cards: 0 });
+    if (deck.isPublic) await logEvent(session.user.id, "deck_published", { deckId: deck.id });
 
     return NextResponse.json({
       id: deck.id,

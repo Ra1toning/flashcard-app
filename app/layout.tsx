@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Manrope, Unbounded } from "next/font/google";
 import AppProviders from "@/components/AppProviders";
 import PersistentNavBar from "@/components/NavBar";
@@ -26,6 +26,7 @@ export const metadata: Metadata = {
   },
   description: "Үгээ илүү амархан тогтоож, flashcard ашиглан өдөр бүр давтаарай.",
   applicationName: "Nudleye",
+  manifest: "/manifest.json",
   icons: {
     icon: "/logo.png",
     shortcut: "/logo.png",
@@ -42,6 +43,10 @@ export const metadata: Metadata = {
     description: "Үгээ илүү амархан тогтоож, flashcard ашиглан өдөр бүр давтаарай.",
     images: ["/logo.png"],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#f5f0e6",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

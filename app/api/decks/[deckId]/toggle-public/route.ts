@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logEvent } from "@/lib/analytics";
 
 export async function POST(
   req: Request,
@@ -34,6 +35,10 @@ export async function POST(
         isPublic: !deck.isPublic,
       },
     });
+
+    if (!deck.isPublic && updatedDeck.isPublic) {
+      await logEvent(session.user.id, "deck_published", { deckId });
+    }
 
     return NextResponse.json({ deck: updatedDeck, success: true });
   } catch (err) {

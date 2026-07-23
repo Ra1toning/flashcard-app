@@ -7,6 +7,7 @@ import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { createStarterDeck } from "@/lib/starter-deck";
+import { logEvent } from "@/lib/analytics";
 
 const providers: NextAuthOptions["providers"] = [
   CredentialsProvider({
@@ -45,7 +46,6 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      allowDangerousEmailAccountLinking: true,
     })
   );
 }
@@ -80,6 +80,7 @@ export const authOptions: NextAuthOptions = {
       } catch (seedError) {
         console.error("Starter deck seed хийхэд алдаа:", seedError);
       }
+      await logEvent(user.id, "signup", { method: "google" });
     },
   },
   secret: process.env.NEXTAUTH_SECRET,

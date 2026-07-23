@@ -1,9 +1,29 @@
 "use client";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { SessionProvider } from "next-auth/react";
-import { useState } from "react";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { SessionProvider, useSession } from "next-auth/react";
+import { useEffect, useRef, useState } from "react";
 import DevRouteWarmer from "@/components/DevRouteWarmer";
+import PwaSetup from "@/components/PwaSetup";
+
+function SessionCacheGuard() {
+  const { data: session, status } = useSession();
+  const queryClient = useQueryClient();
+  const prevUserId = useRef<string | null>(null);
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (status === "loading") return;
+    const currentUserId = session?.user?.id ?? null;
+    if (initialized.current && prevUserId.current !== currentUserId) {
+      queryClient.clear();
+    }
+    prevUserId.current = currentUserId;
+    initialized.current = true;
+  }, [status, session?.user?.id, queryClient]);
+
+  return null;
+}
 
 export default function AppProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -21,7 +41,9 @@ export default function AppProviders({ children }: { children: React.ReactNode }
   return (
     <SessionProvider>
       <QueryClientProvider client={queryClient}>
+        <SessionCacheGuard />
         <DevRouteWarmer />
+        <PwaSetup />
         {children}
       </QueryClientProvider>
     </SessionProvider>

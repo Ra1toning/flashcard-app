@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendEmail, isEmailConfigured, dailyDigestEmail } from "@/lib/email";
+import { utcTomorrow } from "@/lib/date";
 
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Зөвшөөрөлгүй." }, { status: 401 });
   }
 
@@ -12,19 +13,19 @@ export async function GET(req: Request) {
     return NextResponse.json({ skipped: true, reason: "email not configured" });
   }
 
-  const now = new Date();
+  const tomorrow = utcTomorrow();
   const reviewUrl = `${process.env.NEXTAUTH_URL || "https://nudleye.vercel.app"}/test/daily`;
 
   const users = await prisma.user.findMany({
     where: {
-      decks: { some: { cards: { some: { dueDate: { lte: now } } } } },
+      decks: { some: { cards: { some: { dueDate: { lt: tomorrow } } } } },
     },
     select: {
       email: true,
       name: true,
       decks: {
         select: {
-          cards: { where: { dueDate: { lte: now } }, select: { id: true } },
+          cards: { where: { dueDate: { lt: tomorrow } }, select: { id: true } },
         },
       },
     },

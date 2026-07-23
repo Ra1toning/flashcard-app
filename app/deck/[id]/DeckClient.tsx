@@ -15,12 +15,16 @@ import {
   Lock,
   Pencil,
   Play,
+  Star,
   Trash2,
 } from "lucide-react";
 import { fetchJson } from "@/lib/http";
+import { submitCardGrade, type Grade } from "@/lib/srs";
 import DecorativeLayer from "@/components/ui/DecorativeLayer";
 import StarRating from "@/components/StarRating";
 import ReportDialog from "@/components/ReportDialog";
+import GradeButtons from "@/components/GradeButtons";
+import SpeakButton from "@/components/SpeakButton";
 import type { ReportReason } from "@/lib/report";
 
 export type DeckRating = { average: number; count: number; mine: number };
@@ -137,6 +141,29 @@ export default function DeckClient({ deck }: { deck: DeckDetail }) {
     onError: (error) => setReportError(error instanceof Error ? error.message : "Мэдээллийг илгээж чадсангүй."),
   });
 
+  const gradeMutation = useMutation({
+    mutationFn: ({ cardId, grade }: { cardId: string; grade: Grade; front: string; wasMastered: boolean }) => submitCardGrade(cardId, grade),
+    onSuccess: async (outcome, variables) => {
+      if (outcome.ok && !variables.wasMastered && (outcome.interval ?? 0) >= 21) {
+        flashToast(`🎉 "${variables.front}" үгийг эзэмшлээ!`);
+      } else {
+        flashToast(outcome.ok ? "Тэмдэглэлээ ✓" : "Картын явцыг хадгалж чадсангүй.");
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["deck", deck.id] }),
+        queryClient.invalidateQueries({ queryKey: ["daily-review"] }),
+        queryClient.invalidateQueries({ queryKey: ["decks"] }),
+        queryClient.invalidateQueries({ queryKey: ["user-stats"] }),
+      ]);
+      selectCard(Math.min(deck.wordsList.length - 1, index + 1));
+    },
+  });
+
+  function handleGrade(grade: Grade) {
+    if (!card || gradeMutation.isPending) return;
+    gradeMutation.mutate({ cardId: card.id, grade, front: card.korean, wasMastered: card.mastered });
+  }
+
   function rate(value: number) {
     if (status !== "authenticated") {
       router.push("/auth/signin");
@@ -213,14 +240,17 @@ export default function DeckClient({ deck }: { deck: DeckDetail }) {
               </div>
 
               {canRate && (
-                <div className="mt-4 rounded-2xl border border-[#ece3d0] bg-[#fffdf7]/80 p-4">
-                  <p className="text-xs font-semibold text-[#84530f]">{rating.mine ? "Таны үнэлгээ" : "Энэ багцыг үнэлээрэй"}</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-3">
-                    <StarRating value={rating.mine} onRate={rate} disabled={rateMutation.isPending} size={26} />
-                    <span className="text-xs text-[#7e828e]">
-                      {rating.count > 0 ? `Дундаж ${rating.average.toFixed(1)} (${rating.count} үнэлгээ)` : "Хамгийн түрүүнд үнэл"}
-                    </span>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#f0d78c] bg-[#fff6dd] p-4 shadow-sm">
+                  <div>
+                    <p className="flex items-center gap-1.5 text-sm font-bold text-[#84530f]">
+                      <Star className="h-4 w-4 fill-[#e6a52c] text-[#e6a52c]" />
+                      {rating.mine ? "Таны үнэлгээ" : "Энэ багцыг үнэлээрэй"}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[#9a7a3a]">
+                      {rating.count > 0 ? `Дундаж ${rating.average.toFixed(1)} · ${rating.count} үнэлгээ` : "Хамгийн түрүүнд үнэлж, бусдад туслаарай"}
+                    </p>
                   </div>
+                  <StarRating value={rating.mine} onRate={rate} disabled={rateMutation.isPending} size={30} />
                 </div>
               )}
             </div>
@@ -249,7 +279,8 @@ export default function DeckClient({ deck }: { deck: DeckDetail }) {
           <>
             <section className="mx-auto max-w-4xl">
               <div>
-                <div>
+                <div className="relative">
+                  <SpeakButton text={card.korean} className="absolute right-4 top-16 z-10" />
                   <motion.button
                     whileTap={{ scale: .995 }}
                     onClick={() => setFlipped((value) => !value)}
@@ -277,6 +308,14 @@ export default function DeckClient({ deck }: { deck: DeckDetail }) {
                       </AnimatePresence>
                     </div>
                   </motion.button>
+
+                  {deck.isOwner && flipped && (
+                    <GradeButtons
+                      onGrade={handleGrade}
+                      disabled={gradeMutation.isPending}
+                      pendingGrade={gradeMutation.isPending ? gradeMutation.variables?.grade ?? null : null}
+                    />
+                  )}
                 </div>
 
                 <div className="mt-4 flex items-center justify-between">
