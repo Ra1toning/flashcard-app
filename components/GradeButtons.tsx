@@ -21,7 +21,7 @@ export default function GradeButtons({
 }) {
   return (
     <div className="mt-4">
-      <p className="mb-2 text-center text-xs font-semibold text-[#777985]">Хэр сайн саналаа?</p>
+      <p className="mb-2 text-center text-xs font-semibold text-[#777985]">Хэр сайн байна?</p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {GRADE_OPTIONS.map(({ value, label }) => (
           <motion.button
