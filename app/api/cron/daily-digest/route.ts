@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendEmail, isEmailConfigured, dailyDigestEmail } from "@/lib/email";
 import { utcTomorrow } from "@/lib/date";
+import { mapWithConcurrency } from "@/lib/concurrency";
+
+export const maxDuration = 60;
+
+const CONCURRENCY = 8;
 
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
@@ -31,15 +36,15 @@ export async function GET(req: Request) {
     },
   });
 
-  let sent = 0;
-  for (const user of users) {
+  const results = await mapWithConcurrency(users, CONCURRENCY, async (user) => {
     const dueCount = user.decks.reduce((sum, deck) => sum + deck.cards.length, 0);
-    if (dueCount === 0) continue;
+    if (dueCount === 0) return false;
 
     const { subject, html, text } = dailyDigestEmail(user.name, dueCount, reviewUrl);
-    const ok = await sendEmail({ to: user.email, subject, html, text });
-    if (ok) sent++;
-  }
+    return sendEmail({ to: user.email, subject, html, text });
+  });
+
+  const sent = results.filter(Boolean).length;
 
   return NextResponse.json({ success: true, checked: users.length, sent });
 }

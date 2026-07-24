@@ -1,116 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense } from "react";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import BrandLogo from "@/components/ui/BrandLogo";
 import DecorativeLayer from "@/components/ui/DecorativeLayer";
 import GoogleButton from "@/components/ui/GoogleButton";
 
+const ERROR_MESSAGES: Record<string, string> = {
+  OAuthAccountNotLinked: "Энэ и-мэйл хаяг өөр аргаар аль хэдийн бүртгэлтэй байна. Тусламж хэрэгтэй бол бидэнтэй холбогдоно уу.",
+  AccessDenied: "Google дээр зөвшөөрөл олгоогүй тул нэвтэрч чадсангүй.",
+  OAuthSignin: "Google-руу шилжихэд алдаа гарлаа. Дахин оролдоно уу.",
+  OAuthCallback: "Google-ээс хариу авахад алдаа гарлаа. Дахин оролдоно уу.",
+  OAuthCreateAccount: "Бүртгэл үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.",
+  Callback: "Нэвтрэх процесст алдаа гарлаа. Дахин оролдоно уу.",
+  Configuration: "Системийн тохиргооны алдаа гарлаа. Түр хүлээгээд дахин оролдоно уу.",
+  SessionRequired: "Энэ хуудсыг үзэхийн тулд эхлээд нэвтэрнэ үү.",
+  Default: "Нэвтрэхэд алдаа гарлаа. Дахин оролдоно уу.",
+};
+
 export default function SignInForm() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [needsVerification, setNeedsVerification] = useState(false);
-  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
+  return (
+    <AuthLayout title="Тавтай морил" description="Google бүртгэлээрээ үргэлжлүүлнэ үү.">
+      <Suspense fallback={null}>
+        <SignInError />
+      </Suspense>
+      <GoogleButton label="Google-ээр нэвтрэх" />
+    </AuthLayout>
+  );
+}
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    setLoading(true);
-    setError("");
-    setNeedsVerification(false);
-    setResendState("idle");
-    const result = await signIn("credentials", {
-      email: email.trim().toLowerCase(),
-      password,
-      redirect: false,
-    });
-
-    if (result?.error) {
-      if (result.error === "EMAIL_NOT_VERIFIED") {
-        setNeedsVerification(true);
-        setError("И-мэйлээ баталгаажуулаагүй байна.");
-      } else {
-        setError("И-мэйл эсвэл нууц үг буруу байна.");
-      }
-      setLoading(false);
-      return;
-    }
-
-    router.replace("/dashboard");
-    router.refresh();
-  }
-
-  async function resendVerification() {
-    setResendState("sending");
-    try {
-      await fetch("/api/auth/resend-verification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
-      });
-    } finally {
-      setResendState("sent");
-    }
-  }
+function SignInError() {
+  const searchParams = useSearchParams();
+  const code = searchParams.get("error");
+  if (!code) return null;
 
   return (
-    <AuthLayout title="Тавтай морил" description="Үргэлжлүүлэхийн тулд нэвтэрнэ үү.">
-      <GoogleButton label="Google-ээр нэвтрэх" />
-      <div className="my-5 flex items-center gap-3 text-xs text-slate-500">
-        <span className="h-px flex-1 bg-slate-300/30" />
-        эсвэл и-мэйлээр
-        <span className="h-px flex-1 bg-slate-300/30" />
-      </div>
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {error && (
-          <Notice tone="error">
-            {error}
-            {needsVerification && (
-              <span className="mt-1.5 block">
-                {resendState === "sent" ? (
-                  "Шинэ холбоос илгээлээ, и-мэйлээ шалгаарай."
-                ) : (
-                  <button type="button" onClick={resendVerification} disabled={resendState === "sending"} className="font-semibold underline underline-offset-2 disabled:opacity-50">
-                    {resendState === "sending" ? "Илгээж байна..." : "Баталгаажуулах и-мэйл дахин илгээх"}
-                  </button>
-                )}
-              </span>
-            )}
-          </Notice>
-        )}
-        <div>
-          <label className="label" htmlFor="email">И-мэйл</label>
-          <div>
-            <input id="email" type="email" autoComplete="email" required value={email}
-              onChange={(event) => setEmail(event.target.value)} className="field" placeholder="name@nudleye.com" />
-          </div>
-        </div>
-        <div>
-          <label className="label" htmlFor="password">Нууц үг</label>
-          <div className="relative">
-            <input id="password" type={showPassword ? "text" : "password"} autoComplete="current-password"
-              required value={password} onChange={(event) => setPassword(event.target.value)}
-              className="field pr-20" placeholder="Нууц үгээ оруулна уу" />
-            <button type="button" onClick={() => setShowPassword((value) => !value)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 hover:text-slate-300"
-              aria-label={showPassword ? "Нууц үг нуух" : "Нууц үг харах"}>
-              {showPassword ? "Нуух" : "Харах"}
-            </button>
-          </div>
-        </div>
-        <button disabled={loading} className="btn-primary w-full justify-center px-5 py-3 disabled:opacity-50">
-          {loading ? "Нэвтэрч байна..." : "Нэвтрэх"}
-        </button>
-      </form>
-      <p className="mt-6 text-center text-sm text-slate-500">
-        Бүртгэлгүй юу? <Link href="/auth/signup" className="font-semibold text-[#9a6418] hover:text-[#6f460d]">Бүртгүүлэх</Link>
-      </p>
-    </AuthLayout>
+    <div className="mb-5">
+      <Notice tone="error">{ERROR_MESSAGES[code] ?? ERROR_MESSAGES.Default}</Notice>
+    </div>
   );
 }
 
