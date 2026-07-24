@@ -2,27 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { MailCheck } from "lucide-react";
 import BrandLogo from "@/components/ui/BrandLogo";
 import DecorativeLayer from "@/components/ui/DecorativeLayer";
 import GoogleButton from "@/components/ui/GoogleButton";
 
-const REASONS = [
-  { value: "topik", label: "TOPIK шалгалт" },
-  { value: "work", label: "Ажил" },
-  { value: "kcontent", label: "K-контент" },
-  { value: "travel", label: "Аялал" },
-] as const;
-
-type Reason = (typeof REASONS)[number]["value"];
-
 export default function SignUpForm() {
-  const router = useRouter();
   const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
-  const [reason, setReason] = useState<Reason | "">("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [registeredEmail, setRegisteredEmail] = useState("");
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -33,24 +22,19 @@ export default function SignUpForm() {
 
     setLoading(true);
     try {
+      const normalizedEmail = form.email.trim().toLowerCase();
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim().toLowerCase(), password: form.password, learningReason: reason || null }),
+        body: JSON.stringify({ name: form.name.trim(), email: normalizedEmail, password: form.password }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Бүртгэл үүсгэж чадсангүй.");
 
-      const result = await signIn("credentials", {
-        email: form.email.trim().toLowerCase(),
-        password: form.password,
-        redirect: false,
-      });
-      if (result?.error) throw new Error("Бүртгэл үүссэн ч автоматаар нэвтэрч чадсангүй.");
-      router.replace("/dashboard");
-      router.refresh();
+      setRegisteredEmail(normalizedEmail);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Алдаа гарлаа.");
+    } finally {
       setLoading(false);
     }
   }
@@ -61,6 +45,27 @@ export default function SignUpForm() {
     { key: "password", label: "Нууц үг", type: "password", autoComplete: "new-password" },
     { key: "confirmPassword", label: "Нууц үг давтах", type: "password", autoComplete: "new-password" },
   ] as const;
+
+  if (registeredEmail) {
+    return (
+      <div className="app-shell relative grid min-h-screen place-items-center overflow-hidden px-4 py-10">
+        <div className="relative w-full max-w-md">
+          <Link href="/" className="mb-8 flex items-center justify-center gap-2.5 font-semibold">
+            <BrandLogo markClassName="h-9 w-9" />
+          </Link>
+          <div className="panel relative overflow-hidden p-6 text-center sm:p-8">
+            <DecorativeLayer variant="auth" />
+            <MailCheck className="mx-auto h-10 w-10 text-[#9a6418]" />
+            <h1 className="mt-4 text-xl font-bold">И-мэйлээ шалгаарай</h1>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              <strong className="text-[#211f1a]">{registeredEmail}</strong> хаяг руу баталгаажуулах холбоос илгээлээ. Холбоосыг дараад бүртгэлээ идэвхжүүлээрэй.
+            </p>
+            <Link href="/auth/signin" className="btn-secondary mt-6 w-full justify-center px-5 py-3">Нэвтрэх хуудас руу</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell relative grid min-h-screen place-items-center overflow-hidden px-4 py-10">
@@ -83,24 +88,6 @@ export default function SignUpForm() {
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && <div className="rounded-lg border border-rose-300/20 bg-rose-300/8 px-3 py-2.5 text-sm text-rose-200">{error}</div>}
-            <div>
-              <span className="label">Юуны төлөө сурч байна вэ?</span>
-              <div className="grid grid-cols-2 gap-2">
-                {REASONS.map(({ value, label }) => {
-                  const active = reason === value;
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setReason(active ? "" : value)}
-                      className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition ${active ? "border-[#d4a451] bg-[#fff1c7] text-[#84530f] shadow-sm" : "border-[#ded7ca] bg-white/65 text-[#686158] hover:bg-white"}`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {fields.map(({ key, label, type, autoComplete }) => (
                 <div key={key} className={key === "name" || key === "email" ? "sm:col-span-2" : ""}>

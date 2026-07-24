@@ -5,6 +5,7 @@ import { SessionProvider, useSession } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 import DevRouteWarmer from "@/components/DevRouteWarmer";
 import PwaSetup from "@/components/PwaSetup";
+import LearningReasonPrompt from "@/components/LearningReasonPrompt";
 
 function SessionCacheGuard() {
   const { data: session, status } = useSession();
@@ -44,6 +45,7 @@ export default function AppProviders({ children }: { children: React.ReactNode }
         <SessionCacheGuard />
         <DevRouteWarmer />
         <PwaSetup />
+        <LearningReasonPrompt />
         {children}
       </QueryClientProvider>
     </SessionProvider>

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
-import { AlertTriangle, ArrowLeft, Layers3, LogOut, Plus, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, LayoutDashboard, Layers3, LogOut, Plus, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeletons";
 import { fetchJson } from "@/lib/http";
 import DecorativeLayer from "@/components/ui/DecorativeLayer";
@@ -55,6 +55,9 @@ export default function ProfilePage() {
               <Link href="/library" className="btn-secondary px-3 py-2.5 text-xs"><Layers3 className="h-4 w-4" />Миний сан</Link>
               <Link href="/deck/create" className="btn-secondary px-3 py-2.5 text-xs"><Plus className="h-4 w-4" />Шинэ багц</Link>
             </div>
+            {session.user?.role === "ADMIN" && (
+              <Link href="/admin" className="btn-secondary mt-2 w-full px-4 py-2.5 text-xs"><LayoutDashboard className="h-4 w-4" />Админ хяналтын самбар</Link>
+            )}
             <button onClick={() => signOut({ callbackUrl: "/" })} className="btn-ghost mt-3 w-full px-4 py-2.5 text-sm"><LogOut className="h-4 w-4" />Гарах</button>
           </section>
 

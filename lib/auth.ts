@@ -35,6 +35,10 @@ const providers: NextAuthOptions["providers"] = [
       const passwordMatches = await bcrypt.compare(credentials.password, user.password);
       if (!passwordMatches) return null;
 
+      if (!user.emailVerified) {
+        throw new Error("EMAIL_NOT_VERIFIED");
+      }
+
       const { password: _password, ...safeUser } = user;
       return safeUser;
     },
@@ -75,6 +79,7 @@ export const authOptions: NextAuthOptions = {
   events: {
     async createUser({ user }) {
       if (!user.id) return;
+      await prisma.user.update({ where: { id: user.id }, data: { emailVerified: new Date() } }).catch(() => undefined);
       try {
         await createStarterDeck(user.id);
       } catch (seedError) {
