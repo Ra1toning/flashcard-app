@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Check, Layers3, Plus } from "lucide-react";
 import BrandLogo from "@/components/ui/BrandLogo";
 import DecorativeLayer from "@/components/ui/DecorativeLayer";
+import AuthCTA from "@/components/ui/AuthCTA";
 
 export default function LandingPage() {
   const { status } = useSession();
@@ -29,8 +30,7 @@ export default function LandingPage() {
             <BrandLogo markClassName="h-8 w-8" />
           </Link>
           <div className="flex items-center gap-2">
-            <Link href="/auth/signin" className="btn-ghost px-4 py-2 text-sm">Нэвтрэх</Link>
-            <Link href="/auth/signup" className="btn-primary px-4 py-2 text-sm">Бүртгүүлэх</Link>
+            <AuthCTA className="btn-primary px-4 py-2 text-sm">Нэвтрэх</AuthCTA>
           </div>
         </div>
       </header>
@@ -51,8 +51,7 @@ export default function LandingPage() {
               Сурахыг хүссэн хэл, сэдвийнхээ үгсийг амархан тогтоогоорой.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link href="/auth/signup" className="btn-primary px-6 py-3.5">Туршиж үзэх <ArrowRight className="h-4 w-4" /></Link>
-              <Link href="/auth/signin" className="btn-secondary px-6 py-3.5">Нэвтрэх</Link>
+              <AuthCTA className="btn-primary px-6 py-3.5">Туршиж үзэх <ArrowRight className="h-4 w-4" /></AuthCTA>
             </div>
             <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#747783]">
               {["Ямар ч хэл, сэдэв", "Танд тохирсон ухаалаг давталтын арга", "Хязгааргүй үгийн сангаа бүтээгээрэй"].map((item) => (

@@ -50,7 +50,6 @@ model User {
   email          String    @unique
   emailVerified  DateTime?
   image          String?
-  password       String?
   role           Role      @default(USER)
   learningReason String?
   createdAt      DateTime  @default(now())
@@ -66,14 +65,6 @@ model User {
   pushSubscriptions PushSubscription[]
 
   @@index([email])
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
 }
 
 model Deck {
