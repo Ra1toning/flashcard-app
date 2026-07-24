@@ -15,11 +15,15 @@ export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setLoading(true);
     setError("");
+    setNeedsVerification(false);
+    setResendState("idle");
     const result = await signIn("credentials", {
       email: email.trim().toLowerCase(),
       password,
@@ -27,13 +31,31 @@ export default function SignInForm() {
     });
 
     if (result?.error) {
-      setError("И-мэйл эсвэл нууц үг буруу байна.");
+      if (result.error === "EMAIL_NOT_VERIFIED") {
+        setNeedsVerification(true);
+        setError("И-мэйлээ баталгаажуулаагүй байна.");
+      } else {
+        setError("И-мэйл эсвэл нууц үг буруу байна.");
+      }
       setLoading(false);
       return;
     }
 
     router.replace("/dashboard");
     router.refresh();
+  }
+
+  async function resendVerification() {
+    setResendState("sending");
+    try {
+      await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+    } finally {
+      setResendState("sent");
+    }
   }
 
   return (
@@ -45,7 +67,22 @@ export default function SignInForm() {
         <span className="h-px flex-1 bg-slate-300/30" />
       </div>
       <form onSubmit={handleSubmit} className="space-y-5">
-        {error && <Notice tone="error">{error}</Notice>}
+        {error && (
+          <Notice tone="error">
+            {error}
+            {needsVerification && (
+              <span className="mt-1.5 block">
+                {resendState === "sent" ? (
+                  "Шинэ холбоос илгээлээ, и-мэйлээ шалгаарай."
+                ) : (
+                  <button type="button" onClick={resendVerification} disabled={resendState === "sending"} className="font-semibold underline underline-offset-2 disabled:opacity-50">
+                    {resendState === "sending" ? "Илгээж байна..." : "Баталгаажуулах и-мэйл дахин илгээх"}
+                  </button>
+                )}
+              </span>
+            )}
+          </Notice>
+        )}
         <div>
           <label className="label" htmlFor="email">И-мэйл</label>
           <div>

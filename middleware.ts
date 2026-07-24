@@ -18,5 +18,6 @@ export const config = {
     "/deck/create",
     "/deck/:id/edit",
     "/profile/:path*",
+    "/admin/:path*",
   ],
 };
