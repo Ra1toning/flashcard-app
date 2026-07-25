@@ -2,11 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { computeStreak } from "@/lib/streak";
-
-function utcDayKey(date: Date) {
-  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-}
+import { computeStreak, getCompletedDayKeys } from "@/lib/streak";
+import { isMastered } from "@/lib/srs";
 
 export async function GET() {
   try {
@@ -46,12 +43,11 @@ export async function GET() {
 
     for (const deck of user.decks) {
       totalWords += deck.cards.length;
-      mastered += deck.cards.filter(c => c.interval >= 21).length;
+      mastered += deck.cards.filter((c) => isMastered(c.interval)).length;
     }
 
-    const todayKey = utcDayKey(new Date());
-    const testDates = user.testSessions.map((s) => utcDayKey(s.createdAt));
-    const streak = computeStreak(testDates, todayKey);
+    const completedDays = await getCompletedDayKeys(session.user.id);
+    const streak = computeStreak(completedDays);
 
     const recentTests = user.testSessions.slice(0, 10);
     let totalCorrect = 0;

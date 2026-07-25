@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { utcStartOfDay } from "@/lib/date";
-import { computeStreak } from "@/lib/streak";
+import { computeStreak, getCompletedDayKeys } from "@/lib/streak";
 import { logEventOnce, logStreakBroken } from "@/lib/analytics";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -73,25 +73,7 @@ export async function GET() {
 
     rankedCards.sort((a, b) => a.urgency - b.urgency);
 
-    const sessionDates = await prisma.testSession.findMany({
-      where: {
-        userId: session.user.id,
-        sessionType: "daily",
-        completedAt: { not: null },
-      },
-      select: { completedAt: true },
-      orderBy: { completedAt: "desc" },
-      take: 120,
-    });
-
-    const completedDays = [
-      ...new Set(
-        sessionDates
-          .map((item) => item.completedAt)
-          .filter((date): date is Date => Boolean(date))
-          .map((date) => utcStartOfDay(date).getTime())
-      ),
-    ].sort((a, b) => b - a);
+    const completedDays = await getCompletedDayKeys(session.user.id);
 
     const streak = computeStreak(completedDays, today.getTime());
 
