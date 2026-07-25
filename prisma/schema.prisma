@@ -142,6 +142,7 @@ model Card {
 
   @@index([deckId])
   @@index([dueDate])
+  @@index([deckId, dueDate])
 }
 
 model Event {

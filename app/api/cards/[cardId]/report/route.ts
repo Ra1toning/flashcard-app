@@ -31,10 +31,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ cardId:
 
     const card = await prisma.card.findUnique({
       where: { id: cardId },
-      select: { id: true, front: true, back: true, deck: { select: { id: true, name: true } } },
+      select: { id: true, front: true, back: true, deck: { select: { id: true, name: true, isPublic: true, authorId: true } } },
     });
 
-    if (!card) {
+    if (!card || (!card.deck.isPublic && card.deck.authorId !== session?.user?.id)) {
       return NextResponse.json({ error: "Карт олдсонгүй." }, { status: 404 });
     }
 

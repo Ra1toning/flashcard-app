@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Check, Flag, X } from "lucide-react";
 import { fetchJson } from "@/lib/http";
-import { GRADE_OPTIONS, GRADE_PAYLOAD, introduceCard, submitCardGrade, type Grade } from "@/lib/srs";
+import { GRADE_OPTIONS, GRADE_PAYLOAD, introduceCard, isMastered, submitCardGrade, type Grade } from "@/lib/srs";
 import DecorativeLayer from "@/components/ui/DecorativeLayer";
 import GradeButtons from "@/components/GradeButtons";
 import PushPrompt from "@/components/PushPrompt";
@@ -18,6 +18,22 @@ type Result = { cardId: string; front: string; back: string; grade: Grade; corre
 
 function gradeLabel(grade: Grade) {
   return GRADE_OPTIONS.find((option) => option.value === grade)?.label ?? grade;
+}
+
+function buildSavePayload(finalResults: Result[], exposed: number) {
+  const gradedTotal = finalResults.length;
+  const correctCount = finalResults.filter((result) => result.correct).length;
+  const totalCards = gradedTotal > 0 ? gradedTotal : exposed;
+  if (totalCards <= 0) return null;
+  return {
+    deckId: null,
+    sessionType: "daily",
+    totalCards,
+    completed: totalCards,
+    correct: gradedTotal > 0 ? correctCount : exposed,
+    incorrect: gradedTotal > 0 ? gradedTotal - correctCount : 0,
+    score: gradedTotal > 0 ? Math.round((correctCount / gradedTotal) * 100) : 100,
+  };
 }
 
 function buildGradedQueue(justExposed: ReviewCard[], due: ReviewCard[]): ReviewCard[] {
@@ -45,6 +61,9 @@ export default function DailyReviewSession({
 }) {
   const queryClient = useQueryClient();
   const finishing = useRef(false);
+  const beaconSent = useRef(false);
+  const resultsRef = useRef<Result[]>([]);
+  const exposedRef = useRef(0);
   const [exposureIndex, setExposureIndex] = useState(0);
   const [exposedCount, setExposedCount] = useState(0);
   const [phaseIntro, setPhaseIntro] = useState(false);
@@ -91,23 +110,13 @@ export default function DailyReviewSession({
     finishing.current = true;
     setSummary(true);
     setSavingResults(true);
-    const gradedTotal = finalResults.length;
-    const correctCount = finalResults.filter((result) => result.correct).length;
-    const totalCards = gradedTotal > 0 ? gradedTotal : exposed;
-    if (totalCards > 0) {
+    const payload = buildSavePayload(finalResults, exposed);
+    if (payload && !beaconSent.current) {
       try {
         const response = await fetch("/api/test/save-session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            deckId: null,
-            sessionType: "daily",
-            totalCards,
-            completed: totalCards,
-            correct: gradedTotal > 0 ? correctCount : exposed,
-            incorrect: gradedTotal > 0 ? gradedTotal - correctCount : 0,
-            score: gradedTotal > 0 ? Math.round((correctCount / gradedTotal) * 100) : 100,
-          }),
+          body: JSON.stringify(payload),
         });
         if (!response.ok) setSaveWarning((warning) => warning || "Хичээлийн дүнг хадгалж чадсангүй.");
       } catch {
@@ -121,6 +130,29 @@ export default function DailyReviewSession({
     ]);
     setSavingResults(false);
   }
+
+  resultsRef.current = results;
+  exposedRef.current = exposedCount;
+
+  useEffect(() => {
+    function persistOnHide() {
+      if (beaconSent.current || finishing.current) return;
+      if (typeof navigator === "undefined" || typeof navigator.sendBeacon !== "function") return;
+      const payload = buildSavePayload(resultsRef.current, exposedRef.current);
+      if (!payload) return;
+      const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+      if (navigator.sendBeacon("/api/test/save-session", blob)) beaconSent.current = true;
+    }
+    function onVisibility() {
+      if (document.visibilityState === "hidden") persistOnHide();
+    }
+    window.addEventListener("pagehide", persistOnHide);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", persistOnHide);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
 
   const introduceMutation = useMutation({
     mutationFn: async (card: ReviewCard) => ({ card, ok: await introduceCard(card.id) }),
@@ -147,8 +179,8 @@ export default function DailyReviewSession({
     }),
     onSuccess: ({ card, grade, outcome }) => {
       if (!outcome.ok) setSaveWarning((warning) => warning || "Зарим картын дараагийн давталтыг хадгалж чадсангүй.");
-      const wasMastered = (card.interval ?? 0) >= 21;
-      if (outcome.ok && !wasMastered && (outcome.interval ?? 0) >= 21) {
+      const wasMastered = isMastered(card.interval ?? 0);
+      if (outcome.ok && !wasMastered && isMastered(outcome.interval ?? 0)) {
         flashToast(`🎉 "${card.front}" үгийг эзэмшлээ!`);
       }
       const result: Result = { cardId: card.id, front: card.front, back: card.back, grade, correct: GRADE_PAYLOAD[grade].correct };

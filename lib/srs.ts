@@ -1,3 +1,9 @@
+export const MASTERY_INTERVAL = 21;
+
+export function isMastered(interval: number): boolean {
+  return interval >= MASTERY_INTERVAL;
+}
+
 export type Grade = "again" | "hard" | "good" | "easy";
 
 export const GRADE_OPTIONS: { value: Grade; label: string }[] = [
