@@ -6,8 +6,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Check, Flag, X } from "lucide-react";
 import { fetchJson } from "@/lib/http";
 import { GRADE_OPTIONS, GRADE_PAYLOAD, introduceCard, isMastered, submitCardGrade, type Grade } from "@/lib/srs";
+import { useCardSwipe } from "@/lib/use-card-swipe";
 import DecorativeLayer from "@/components/ui/DecorativeLayer";
 import GradeButtons from "@/components/GradeButtons";
+import SwipeHint from "@/components/SwipeHint";
 import PushPrompt from "@/components/PushPrompt";
 import ReportDialog from "@/components/ReportDialog";
 import SpeakButton from "@/components/SpeakButton";
@@ -211,6 +213,14 @@ export default function DailyReviewSession({
     void finish(results, exposedCount);
   }
 
+  const swipe = useCardSwipe({
+    cardId: current?.id ?? "",
+    enabled: Boolean(current) && flipped && (inExposure ? !introduceMutation.isPending : !gradeMutation.isPending),
+    leftEnabled: !inExposure,
+    onCommitRight: () => { if (inExposure) acknowledge(); else handleGrade("good"); },
+    onCommitLeft: () => handleGrade("again"),
+  });
+
   const progress = total ? ((exposedCount + results.length) / total) * 100 : 0;
   const accuracy = useMemo(() => results.length
     ? Math.round((results.filter((result) => result.correct).length / results.length) * 100)
@@ -392,10 +402,13 @@ export default function DailyReviewSession({
             className="relative"
           >
             <SpeakButton text={current.front} className="absolute right-4 top-16 z-10" />
+            <SwipeHint side="right" opacity={swipe.rightOpacity} label={inExposure ? "Ойлголоо" : undefined} />
+            {!inExposure && <SwipeHint side="left" opacity={swipe.leftOpacity} />}
             <motion.button
               whileTap={{ scale: .995 }}
-              onClick={() => setFlipped((value) => !value)}
-              className="flashcard-surface relative min-h-[330px] w-full overflow-hidden text-center"
+              {...swipe.dragProps}
+              onClick={() => { if (swipe.consumeDrag()) return; setFlipped((value) => !value); }}
+              className="flashcard-surface relative min-h-[330px] w-full touch-pan-y overflow-hidden text-center"
             >
               <DecorativeLayer variant="flashcard" />
               <div className="flex items-center justify-between border-b border-[#e4e6eb] px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-[#8c909c]">
