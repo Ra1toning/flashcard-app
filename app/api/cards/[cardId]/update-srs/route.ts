@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { MASTERY_INTERVAL } from "@/lib/srs";
 
 function applySM2(
   easeFactor: number,
@@ -90,7 +91,7 @@ export async function POST(
 
       const [total, mastered] = await Promise.all([
         tx.card.count({ where: { deckId: card.deckId } }),
-        tx.card.count({ where: { deckId: card.deckId, interval: { gte: 21 } } }),
+        tx.card.count({ where: { deckId: card.deckId, interval: { gte: MASTERY_INTERVAL } } }),
       ]);
 
       await tx.userProgress.upsert({

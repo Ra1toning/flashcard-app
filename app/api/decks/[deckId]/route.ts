@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logEvent } from "@/lib/analytics";
+import { MASTERY_INTERVAL, isMastered } from "@/lib/srs";
 
 type RouteContext = {
   params: Promise<{
@@ -101,7 +102,7 @@ export async function GET(req: Request, context: RouteContext) {
         id: card.id,
         korean: card.front,
         mongolian: card.back,
-        mastered: card.interval >= 21,
+        mastered: isMastered(card.interval),
         dueDate: card.dueDate.toISOString(),
         easeFactor: card.easeFactor,
         interval: card.interval,
@@ -203,7 +204,7 @@ export async function PATCH(req: Request, context: RouteContext) {
               front: card.korean,
               back: card.mongolian,
               easeFactor: 2.5,
-              interval: 0,
+              interval: 1,
               repetition: 0,
               dueDate: new Date(),
             })),
@@ -241,7 +242,7 @@ export async function PATCH(req: Request, context: RouteContext) {
           });
         }
 
-        const mastered = await tx.card.count({ where: { deckId, interval: { gte: 21 } } });
+        const mastered = await tx.card.count({ where: { deckId, interval: { gte: MASTERY_INTERVAL } } });
 
         await tx.userProgress.upsert({
           where: {
