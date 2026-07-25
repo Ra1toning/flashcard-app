@@ -20,10 +20,12 @@ import {
 } from "lucide-react";
 import { fetchJson } from "@/lib/http";
 import { submitCardGrade, type Grade } from "@/lib/srs";
+import { useCardSwipe } from "@/lib/use-card-swipe";
 import DecorativeLayer from "@/components/ui/DecorativeLayer";
 import StarRating from "@/components/StarRating";
 import ReportDialog from "@/components/ReportDialog";
 import GradeButtons from "@/components/GradeButtons";
+import SwipeHint from "@/components/SwipeHint";
 import SpeakButton from "@/components/SpeakButton";
 import type { ReportReason } from "@/lib/report";
 
@@ -189,6 +191,14 @@ export default function DeckClient({ deck }: { deck: DeckDetail }) {
     setFlipped(false);
   }
 
+  const swipe = useCardSwipe({
+    cardId: card?.id ?? "",
+    enabled: Boolean(card) && Boolean(deck.isOwner) && flipped && !gradeMutation.isPending,
+    leftEnabled: true,
+    onCommitRight: () => handleGrade("good"),
+    onCommitLeft: () => handleGrade("again"),
+  });
+
   const canRate = !deck.isOwner && deck.isPublic;
 
   return (
@@ -281,10 +291,17 @@ export default function DeckClient({ deck }: { deck: DeckDetail }) {
               <div>
                 <div className="relative">
                   <SpeakButton text={card.korean} className="absolute right-4 top-16 z-10" />
+                  {deck.isOwner && (
+                    <>
+                      <SwipeHint side="right" opacity={swipe.rightOpacity} />
+                      <SwipeHint side="left" opacity={swipe.leftOpacity} />
+                    </>
+                  )}
                   <motion.button
                     whileTap={{ scale: .995 }}
-                    onClick={() => setFlipped((value) => !value)}
-                    className="flashcard-surface relative min-h-[330px] w-full overflow-hidden text-center"
+                    {...swipe.dragProps}
+                    onClick={() => { if (swipe.consumeDrag()) return; setFlipped((value) => !value); }}
+                    className="flashcard-surface relative min-h-[330px] w-full touch-pan-y overflow-hidden text-center"
                   >
                     <DecorativeLayer variant="flashcard" />
                     <div className="flex items-center justify-between border-b border-[#e4e6eb] px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-[#8c909c]">
