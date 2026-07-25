@@ -41,6 +41,7 @@ export function useCardSwipe({
 
   function onDragStart(_event: DragEvent, info: PanInfo) {
     didDrag.current = true;
+    committed.current = false;
     const width = typeof window !== "undefined" ? window.innerWidth : 0;
     edgeStart.current = info.point.x <= EDGE_ZONE || info.point.x >= width - EDGE_ZONE;
   }
